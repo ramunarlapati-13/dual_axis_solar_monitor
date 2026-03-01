@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual-Axis Solar Monitoring System</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Meta tags for SEO & Theme -->
+    <meta name="description" content="Dashboard for Dual-Axis Solar Monitoring System">
+    <meta name="theme-color" content="#121417">
+</head>
+
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <header class="glass-panel header-container">
+            <h1 class="logo-text">SOLAR TRACKER <span>V1.0</span></h1>
+            <div class="ip-config-panel">
+                <input type="text" id="esp-ip-input" placeholder="Device IP (e.g. 192.168.137.23)"
+                    value="192.168.137.23">
+                <button id="update-ip-btn" class="mini-action-btn">CONNECT</button>
+            </div>
+            <div class="status-indicator" id="system-status-indicator">
+                <div class="pulsing-dot" id="system-status-dot"></div>
+                <span class="status-text" id="system-status-text">System Online</span>
+            </div>
+        </header>
+
+        <!-- Main Grid Layout -->
+        <main class="grid-layout">
+            <!-- Weather Insights -->
+            <section class="glass-panel weather-card">
+                <h2>Vijayawada Weather & Forecast</h2>
+                <div class="weather-layout">
+                    <div class="current-weather">
+                        <div class="weather-main">
+                            <span id="weather-temp" class="weather-temp neon-text">--°C</span>
+                            <div class="weather-desc">
+                                <span id="weather-condition">Condition</span>
+                                <span id="weather-humidity">Humidity: --%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hourly-forecast" id="forecast-container">
+                        <!-- forecast items go here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Estimated Power Generation -->
+            <section class="glass-panel power-card">
+                <h2>Estimated Power Generation</h2>
+                <div class="power-stats">
+                    <div class="stat-item power-highlight">
+                        <span class="stat-label">Expected Output (Based on Weather)</span>
+                        <span id="power-estimate" class="stat-value neon-text"
+                            style="color: var(--amber-main); text-shadow: 0 0 10px var(--amber-glow);">-- W</span>
+                    </div>
+                </div>
+                <div id="power-formula"
+                    style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 1rem; text-align: center;">
+                    Formula: Max (100W) × Sun Angle (~--%) × Sky Clarity (--%)
+                </div>
+            </section>
+
+            <!-- Central Card: Compass/Sun position -->
+            <section class="glass-panel central-card" id="central-card">
+                <h2>Azimuth (Horizontal Angle)</h2>
+                <div class="compass-wrapper">
+                    <div class="compass-outer">
+                        <div class="compass-inner" id="compass">
+                            <div class="sun-icon"></div>
+                        </div>
+                        <div class="compass-center"></div>
+                    </div>
+                </div>
+                <div class="angle-readout">
+                    <span id="horiz-angle-val" class="neon-text">90</span><span class="unit">°</span>
+                </div>
+            </section>
+
+            <!-- Gauges Card: Horizontal & Vertical Servo Positions -->
+            <section class="glass-panel gauges-card">
+                <h2>Servo Positions</h2>
+                <div class="gauges-wrapper">
+                    <div class="gauge-item">
+                        <div class="half-circle-gauge">
+                            <div class="gauge-fill" id="horiz-gauge-fill" style="transform: rotate(0deg);"></div>
+                            <div class="gauge-mask">
+                                <div class="gauge-value"><span id="horiz-text" class="neon-text">90</span>°</div>
+                            </div>
+                        </div>
+                        <p>Horizontal</p>
+                    </div>
+                    <div class="gauge-item">
+                        <div class="half-circle-gauge">
+                            <div class="gauge-fill alt-color" id="vert-gauge-fill" style="transform: rotate(0deg);">
+                            </div>
+                            <div class="gauge-mask">
+                                <div class="gauge-value"><span id="vert-text" class="neon-text">45</span>°</div>
+                            </div>
+                        </div>
+                        <p>Vertical</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SP Signals (Solar Panel Sensor Monitoring) -->
+            <section class="ldr-section">
+                <div class="section-title-wrap"
+                    style="grid-column: span 2; display: flex; align-items: center; justify-content: space-between;">
+                    <h2>SP Signals</h2>
+                    <span class="stat-label" style="font-size: 0.7rem; opacity: 0.6;">CONTINUOUS TRACKING</span>
+                </div>
+                <div class="glass-panel ldr-card">
+                    <div class="ldr-header">
+                        <h3>Top Left (TL)</h3>
+                        <span class="neon-text ldr-val" id="ldr-tl-text">80%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="ldr-tl" style="width: 80%;"></div>
+                    </div>
+                </div>
+
+                <div class="glass-panel ldr-card">
+                    <div class="ldr-header">
+                        <h3>Top Right (TR)</h3>
+                        <span class="neon-text ldr-val" id="ldr-tr-text">75%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="ldr-tr" style="width: 75%;"></div>
+                    </div>
+                </div>
+
+                <div class="glass-panel ldr-card">
+                    <div class="ldr-header">
+                        <h3>Bottom Left (BL)</h3>
+                        <span class="neon-text ldr-val" id="ldr-bl-text">40%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="ldr-bl" style="width: 40%;"></div>
+                    </div>
+                </div>
+
+                <div class="glass-panel ldr-card">
+                    <div class="ldr-header">
+                        <h3>Bottom Right (BR)</h3>
+                        <span class="neon-text ldr-val" id="ldr-br-text">45%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="ldr-br" style="width: 45%;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Direction & Stats Container -->
+            <div class="sidebar-layout">
+                <!-- Direction Box -->
+                <section class="glass-panel direction-card">
+                    <h2>Motor Status</h2>
+                    <div class="direction-display" id="direction-display">
+                        STATIONARY
+                    </div>
+                    <div class="direction-controls">
+                        <div class="arrow-pad">
+                            <div class="arrow up"></div>
+                            <div class="arrow left"></div>
+                            <div class="arrow right"></div>
+                            <div class="arrow down"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Daily Statistics -->
+                <section class="glass-panel stats-card">
+                    <h2>Daily Statistics</h2>
+                    <div class="stats-list">
+                        <div class="stat-row">
+                            <span class="stat-label">System Uptime</span>
+                            <span class="stat-value neon-text" id="uptime">00:00:00</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Tracker Mode</span>
+                            <span class="stat-value" id="tracker-mode">AUTO</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Power Efficiency</span>
+                            <!-- Will be calculated as (Average LDR Light Level / 100) * 100 -->
+                            <span class="stat-value neon-text" id="power-efficiency">0.0%</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Network Status</span>
+                            <span class="stat-value text-connected" id="network-status">Connected (IP:
+                                192.168.137.23)</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Online Check</span>
+                            <span class="stat-value neon-text" id="last-online-check">Continuous...</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Manual Controls -->
+                <section class="glass-panel manual-control-card">
+                    <div class="header-with-toggle">
+                        <h2>Manual Override</h2>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="manual-mode-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="slider-controls disabled-ui" id="manual-sliders">
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Azimuth (Horizontal)</label>
+                                <span id="manual-h-val" class="neon-text">90°</span>
+                            </div>
+                            <input type="range" id="manual-h-slider" min="0" max="180" value="90" disabled>
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Elevation (Vertical)</label>
+                                <span id="manual-v-val" class="neon-text">45°</span>
+                            </div>
+                            <input type="range" id="manual-v-slider" min="0" max="180" value="45" disabled>
+                        </div>
+                        <button id="send-manual-btn" class="action-btn" disabled>Send Command</button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- History Tracking Chart -->
+            <section class="glass-panel chart-card">
+                <h2>Tracking History (Azimuth vs Elevation)</h2>
+                <div class="chart-container">
+                    <canvas id="historyChart"></canvas>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Chart.js for History Plot -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
