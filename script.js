@@ -174,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Live Data Integration
-    let ESP_IP = localStorage.getItem('esp_ip') || "192.168.137.23";
+    let ESP_IP = localStorage.getItem('esp_ip') || "192.168.137.89";
     const ipInput = document.getElementById('esp-ip-input');
     const updateIpBtn = document.getElementById('update-ip-btn');
 
@@ -182,7 +182,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (updateIpBtn) {
         updateIpBtn.addEventListener('click', () => {
-            const newIp = ipInput.value.trim();
+            let newIp = ipInput.value.trim();
+            // Clean up if user enters http:// or https:// or trailing slashes
+            newIp = newIp.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+
             if (newIp) {
                 ESP_IP = newIp;
                 localStorage.setItem('esp_ip', ESP_IP);
@@ -197,7 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const FETCH_INTERVAL = 1000; // 1 second polling
-    const FETCH_TIMEOUT = 1200;  // Immediate timeout if ESP is slow 
+    const FETCH_TIMEOUT = 5000;  // 5 second timeout if ESP is slow 
 
     async function fetchData() {
         const controller = new AbortController();
@@ -206,10 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const response = await fetch(`http://${ESP_IP}/data`, {
                 mode: 'cors',
-                signal: controller.signal,
-                headers: {
-                    'Accept': 'application/json'
-                }
+                signal: controller.signal
             });
 
             clearTimeout(timeoutId);
@@ -334,6 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
             sendBtn.disabled = false;
             trackerModeDisplay.textContent = 'MANUAL';
             trackerModeDisplay.style.color = 'var(--amber-main)';
+            fetch(`http://${ESP_IP}/mode?val=1`, { mode: 'cors' }).catch(console.error);
         } else {
             manualSlidersDiv.classList.add('disabled-ui');
             hSlider.disabled = true;
@@ -341,26 +342,31 @@ document.addEventListener("DOMContentLoaded", () => {
             sendBtn.disabled = true;
             trackerModeDisplay.textContent = 'AUTO';
             trackerModeDisplay.style.color = 'var(--neon-cyan-main)';
-            // Tell ESP to go back to Auto mode if you have an endpoint for it
-            fetch(`http://${ESP_IP}/auto`, { mode: 'cors' }).catch(console.error);
+            // Tell ESP to go back to Auto mode
+            fetch(`http://${ESP_IP}/mode?val=0`, { mode: 'cors' }).catch(console.error);
         }
     });
 
     hSlider.addEventListener('input', () => {
         hSliderValText.textContent = `${hSlider.value}°`;
+        fetch(`http://${ESP_IP}/slider?axis=h&val=${hSlider.value}`, { mode: 'cors' }).catch(console.error);
     });
 
     vSlider.addEventListener('input', () => {
         vSliderValText.textContent = `${vSlider.value}°`;
+        fetch(`http://${ESP_IP}/slider?axis=v&val=${vSlider.value}`, { mode: 'cors' }).catch(console.error);
     });
 
     sendBtn.addEventListener('click', () => {
         sendManualCommand(hSlider.value, vSlider.value);
+        fetch(`http://${ESP_IP}/slider?axis=h&val=${hSlider.value}`, { mode: 'cors' }).catch(console.error);
+        fetch(`http://${ESP_IP}/slider?axis=v&val=${vSlider.value}`, { mode: 'cors' }).catch(console.error);
     });
 
     // Weather Integration
-    const WEATHER_API_KEY = "7609c7c1a86e12ff36f86ed3ca3f1cbc";
-    const CITY = "Vijayawada";
+    // Loading keys from config.js to prevent exposing them in public repositories
+    const WEATHER_API_KEY = typeof CONFIG !== 'undefined' ? CONFIG.WEATHER_API_KEY : 'YOUR_API_KEY_HERE';
+    const CITY = typeof CONFIG !== 'undefined' ? CONFIG.CITY : 'Vijayawada';
 
     async function fetchWeatherData() {
         try {
