@@ -58,7 +58,16 @@ The system operates in two distinct modes:
 *   **Auto-Tracking Mode:** Uses four digital sensors to detect light orientation and move servos to the brightest point.
 *   **Manual Mode:** Allows the user to take control via a web browser and move the horizontal and vertical axes using sliders.
 
-## 2. Wiring & Pin Configuration
+## 2. Required Components
+
+To build this tracking system, you will need the following hardware components:
+*   **1x ESP8266 (NodeMCU):** The primary microcontroller.
+*   **4x Digital LDR Modules:** Light Dependent Resistor modules with digital outputs for detecting light intensity.
+*   **2x SG90 Micro Servo Motors:** Provide movement for the horizontal (pan) and vertical (tilt) axes.
+*   **1x 1000µF Capacitor:** Recommended to smooth voltage spikes and provide stability.
+*   **Jumper wires and Breadboard:** For making the connections.
+
+## 3. Component Connections & Pin Configuration
 
 ### Input: LDR Modules (Digital)
 Since the ESP8266 has only one analog pin, we utilize the D0 (Digital Output) pins of four blue LDR modules. These modules have onboard potentiometers to calibrate light sensitivity.
@@ -80,14 +89,14 @@ Two SG90 Micro Servos provide the movement.
 | Horizontal | D7 | 13 | Orange (Signal) |
 | Vertical | D8 | 15 | Orange (Signal) |
 
-## 3. Circuit Schematic Notes
+## 4. Circuit Schematic Notes
 
 *   **Voltage Levels:** LDR modules are powered by the 3.3V pin to ensure the digital signals do not exceed the ESP8266's logic limits.
 *   **Servo Power:** Servos are connected to the Vin pin (5V) for higher torque.
 *   **Common Ground:** All GND pins from the servos, sensors, and ESP8266 must be tied together.
 *   **Stability:** A 1000µF capacitor is recommended across the servo power lines to prevent WiFi dropouts during motor movement.
 
-## 4. Software Features
+## 5. Software Features
 
 ### A. The Web Dashboard
 The ESP8266 hosts a local web server. When you navigate to the device's IP address, you see:
@@ -100,13 +109,13 @@ The ESP8266 hosts a local web server. When you navigate to the device's IP addre
 *   **Smooth Return:** If it stays dark for more than 3 seconds, the system moves the servos slowly back to a "Home" position (90°, 45°).
 *   **Hysteresis/Step Control:** The movement uses a 2-degree step size with a 15ms delay to match the snappy response seen in high-end DIY trackers.
 
-## 5. Calibration Procedure
+## 6. Calibration Procedure
 
 *   **Hardware:** Use a screwdriver on the blue potentiometer of each LDR module. Adjust until the onboard LED turns ON in direct light and OFF in shadow.
 *   **Software:** Set your WiFi SSID and Password in the code.
 *   **Deployment:** Monitor the Serial Monitor (115200 baud) to find the local IP address for the dashboard.
 
-## 6. Maintenance & Safety
+## 7. Maintenance & Safety
 
 *   **Mechanical Limits:** Do not set servo angles beyond the physical capability of your frame (20° and 150° are safe defaults for vertical).
 *   **Weatherproofing:** If used outdoors, the ESP8266 and sensors must be protected from moisture.
