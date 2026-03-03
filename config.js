@@ -1,9 +1,9 @@
 // config.js - Keep this file out of version control (add to .gitignore)
 const CONFIG = {
-    WEATHER_API_KEY: '7609c7c1a86e12ff36f86ed3ca3f1cbc', // Paste your actual OpenWeatherMap API key here
+    WEATHER_API_KEY: 'YOUR_OPENWEATHER_API_KEY_HERE', // Paste your actual OpenWeatherMap API key here (from .env)
     CITY: 'Vijayawada',
     FIREBASE_CONFIG: {
-        apiKey: "AIzaSyCX5wcU7tCZOYbWEU5ioCtCRJHjVI3d5cw",
+        apiKey: "YOUR_FIREBASE_API_KEY_HERE", // Paste your actual Firebase API key here (from .env)
         authDomain: "dualaxissolar-535a2.firebaseapp.com",
         projectId: "dualaxissolar-535a2",
         databaseURL: "https://dualaxissolar-535a2-default-rtdb.firebaseio.com", // Add this explicit URL to ensure it works properly

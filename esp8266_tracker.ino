@@ -9,7 +9,7 @@
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD_HERE"
 
 #define FIREBASE_HOST "dualaxissolar-535a2-default-rtdb.firebaseio.com"
-#define FIREBASE_AUTH "AIzaSyCX5wcU7tCZOYbWEU5ioCtCRJHjVI3d5cw"
+#define FIREBASE_AUTH "YOUR_FIREBASE_AUTH_KEY_HERE"
 
 // ==========================================
 // 2. HARDWARE PINS (Based on Documentation)
