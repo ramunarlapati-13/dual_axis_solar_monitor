@@ -248,17 +248,17 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             */
 
-            // Mapping ESP data to local variables
-            horizontalServo = data.hAngle;
-            verticalServo = data.vAngle;
-            azimuthAngle = data.hAngle;
+            // Mapping ESP data to local variables (support both h/v and hAngle/vAngle keys)
+            horizontalServo = data.hAngle !== undefined ? data.hAngle : (data.h !== undefined ? data.h : horizontalServo);
+            verticalServo = data.vAngle !== undefined ? data.vAngle : (data.v !== undefined ? data.v : verticalServo);
+            azimuthAngle = horizontalServo;
             stateMachine = data.status || 'STATIONARY';
 
-            // Map LDRs (assuming 0-1024 range from ESP ADC)
-            ldrValues.tl = (data.ldrTL / 1024) * 100;
-            ldrValues.tr = (data.ldrTR / 1024) * 100;
-            ldrValues.bl = (data.ldrBL / 1024) * 100;
-            ldrValues.br = (data.ldrBR / 1024) * 100;
+            // Map LDRs (assuming 0-1024 range from ESP ADC), fallback to previous values if undefined
+            ldrValues.tl = data.ldrTL !== undefined ? (data.ldrTL / 1024) * 100 : ldrValues.tl;
+            ldrValues.tr = data.ldrTR !== undefined ? (data.ldrTR / 1024) * 100 : ldrValues.tr;
+            ldrValues.bl = data.ldrBL !== undefined ? (data.ldrBL / 1024) * 100 : ldrValues.bl;
+            ldrValues.br = data.ldrBR !== undefined ? (data.ldrBR / 1024) * 100 : ldrValues.br;
 
             // Efficiency Calculation
             let averageLdrPercent = (ldrValues.tl + ldrValues.tr + ldrValues.bl + ldrValues.br) / 4;
