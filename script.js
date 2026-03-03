@@ -1,4 +1,6 @@
 // Simulate Solar Tracker System Data
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     // DOM Elements
@@ -173,158 +175,110 @@ document.addEventListener("DOMContentLoaded", () => {
         if (stateMachine.includes('RIGHT')) arrowRight.classList.add('active');
     }
 
-    // Live Data Integration
-    let ESP_IP = localStorage.getItem('esp_ip') || "192.168.137.89";
-    const ipInput = document.getElementById('esp-ip-input');
-    const updateIpBtn = document.getElementById('update-ip-btn');
-
-    if (ipInput) ipInput.value = ESP_IP;
-
-    if (updateIpBtn) {
-        updateIpBtn.addEventListener('click', () => {
-            let newIp = ipInput.value.trim();
-            // Clean up if user enters http:// or https:// or trailing slashes
-            newIp = newIp.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-
-            if (newIp) {
-                ESP_IP = newIp;
-                localStorage.setItem('esp_ip', ESP_IP);
-                // Update IP display in stats as well
-                const networkStatusText = document.getElementById('network-status');
-                if (networkStatusText) {
-                    networkStatusText.textContent = `Connecting (IP: ${ESP_IP})...`;
-                }
-                fetchData();
-            }
-        });
+    // --- Firebase Realtime Database Integration ---
+    if (!CONFIG.FIREBASE_CONFIG || !CONFIG.FIREBASE_CONFIG.apiKey) {
+        console.error("Firebase config is missing in config.js!");
+        networkStatusDisplay.textContent = 'Missing Firebase Config';
+        return;
     }
 
-    const FETCH_INTERVAL = 1000; // 1 second polling
-    const FETCH_TIMEOUT = 5000;  // 5 second timeout if ESP is slow 
+    const app = initializeApp(CONFIG.FIREBASE_CONFIG);
+    const db = getDatabase(app);
+    const dataRef = ref(db, 'solar_tracker/data');
+    const controlsRef = ref(db, 'solar_tracker/controls');
+    const connectedRef = ref(db, '.info/connected');
 
-    async function fetchData() {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
-
-        try {
-            const response = await fetch(`http://${ESP_IP}/data`, {
-                mode: 'cors',
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) throw new Error('Network response was not ok');
-
-            const data = await response.json();
-
-            // Set Online State Immediately
-            networkStatusDisplay.textContent = `Connected (IP: ${ESP_IP})`;
+    // Display cloud connection status instantly
+    onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+            networkStatusDisplay.textContent = `Connected (Firebase Cloud)`;
             networkStatusDisplay.className = 'stat-value text-connected';
             systemStatusIndicator.classList.remove('offline');
             systemStatusText.textContent = 'System Online';
-            const lastCheckDisplay = document.getElementById('last-online-check');
-            if (lastCheckDisplay) {
-                lastCheckDisplay.textContent = new Date().toLocaleTimeString();
-            }
-
-            if (!manualToggle.checked) {
-                trackerModeDisplay.textContent = 'AUTO';
-                trackerModeDisplay.style.color = 'var(--neon-cyan-main)';
-            } else {
-                trackerModeDisplay.textContent = 'MANUAL';
-                trackerModeDisplay.style.color = 'var(--amber-main)';
-            }
-
-            /* Expected JSON structure from ESP:
-            {
-                "hAngle": 90,
-                "vAngle": 45,
-                "ldrTL": 800,
-                "ldrTR": 750,
-                "ldrBL": 400,
-                "ldrBR": 450,
-                "status": "Moving: LEFT"
-            }
-            */
-
-            // Mapping ESP data to local variables (support both h/v and hAngle/vAngle keys)
-            horizontalServo = data.hAngle !== undefined ? data.hAngle : (data.h !== undefined ? data.h : horizontalServo);
-            verticalServo = data.vAngle !== undefined ? data.vAngle : (data.v !== undefined ? data.v : verticalServo);
-            azimuthAngle = horizontalServo;
-            stateMachine = data.status || 'STATIONARY';
-
-            // Map LDRs (assuming 0-1024 range from ESP ADC), fallback to previous values if undefined
-            ldrValues.tl = data.ldrTL !== undefined ? (data.ldrTL / 1024) * 100 : ldrValues.tl;
-            ldrValues.tr = data.ldrTR !== undefined ? (data.ldrTR / 1024) * 100 : ldrValues.tr;
-            ldrValues.bl = data.ldrBL !== undefined ? (data.ldrBL / 1024) * 100 : ldrValues.bl;
-            ldrValues.br = data.ldrBR !== undefined ? (data.ldrBR / 1024) * 100 : ldrValues.br;
-
-            // Efficiency Calculation
-            let averageLdrPercent = (ldrValues.tl + ldrValues.tr + ldrValues.bl + ldrValues.br) / 4;
-            let efficiency = Math.min(100, Math.max(0, averageLdrPercent));
-            powerEfficiencyDisplay.textContent = `${efficiency.toFixed(1)}%`;
-
-            // If in Auto Mode, update sliders to reflect actual position
-            if (!manualToggle.checked) {
-                hSlider.value = horizontalServo;
-                vSlider.value = verticalServo;
-                hSliderValText.textContent = `${Math.round(horizontalServo)}°`;
-                vSliderValText.textContent = `${Math.round(verticalServo)}°`;
-            }
-
-            // Chart Updates
-            const now = new Date();
-            timeLabels.push(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`);
-            azimuthData.push(horizontalServo);
-            elevationData.push(verticalServo);
-
-            if (timeLabels.length > 30) {
-                timeLabels.shift();
-                azimuthData.shift();
-                elevationData.shift();
-            }
-            historyChart.update();
-            updateUI();
-
-        } catch (error) {
-            clearTimeout(timeoutId);
-            console.error('Fetch error:', error);
-
-            // Set Offline State Immediately
-            networkStatusDisplay.textContent = 'Disconnected (ESP Offline)';
+        } else {
+            networkStatusDisplay.textContent = 'Disconnected (Firebase)';
             networkStatusDisplay.className = 'stat-value text-disconnected';
             systemStatusIndicator.classList.add('offline');
             systemStatusText.textContent = 'System Offline';
-            const lastCheckDisplay = document.getElementById('last-online-check');
-            if (lastCheckDisplay) {
-                lastCheckDisplay.textContent = "Retrying... " + new Date().toLocaleTimeString();
-            }
-            trackerModeDisplay.textContent = 'OFFLINE';
-            trackerModeDisplay.style.color = '#ff3333';
-
             stateMachine = 'OFFLINE';
             updateUI();
         }
-    }
+    });
 
-    // Manual Command Sender
-    async function sendManualCommand(h, v) {
-        try {
-            // Usually ESPs handle GET with params for simplicity, or POST
-            // We'll use GET with query params: http://IP/set?h=90&v=45
-            const response = await fetch(`http://${ESP_IP}/set?h=${h}&v=${v}`, {
-                mode: 'cors'
-            });
-            if (response.ok) {
-                console.log("Manual command sent successfully");
-            }
-        } catch (err) {
-            console.error("Failed to send manual command:", err);
+    // Listen to real-time telemetry output from ESP8266
+    onValue(dataRef, (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+
+        console.log("Live Firebase Data Received:", data);
+
+        horizontalServo = data.h !== undefined ? data.h : (data.hAngle !== undefined ? data.hAngle : horizontalServo);
+        verticalServo = data.v !== undefined ? data.v : (data.vAngle !== undefined ? data.vAngle : verticalServo);
+        azimuthAngle = horizontalServo;
+        stateMachine = data.status || 'STATIONARY';
+
+        ldrValues.tl = data.ldrTL !== undefined ? (data.ldrTL / 1024) * 100 : ldrValues.tl;
+        ldrValues.tr = data.ldrTR !== undefined ? (data.ldrTR / 1024) * 100 : ldrValues.tr;
+        ldrValues.bl = data.ldrBL !== undefined ? (data.ldrBL / 1024) * 100 : ldrValues.bl;
+        ldrValues.br = data.ldrBR !== undefined ? (data.ldrBR / 1024) * 100 : ldrValues.br;
+
+        let averageLdrPercent = (ldrValues.tl + ldrValues.tr + ldrValues.bl + ldrValues.br) / 4;
+        let efficiency = Math.min(100, Math.max(0, averageLdrPercent));
+        powerEfficiencyDisplay.textContent = `${efficiency.toFixed(1)}%`;
+
+        // If in auto mode, update sliders seamlessly 
+        if (!manualToggle.checked) {
+            hSlider.value = horizontalServo;
+            vSlider.value = verticalServo;
+            hSliderValText.textContent = `${Math.round(horizontalServo)}°`;
+            vSliderValText.textContent = `${Math.round(verticalServo)}°`;
         }
-    }
 
-    // Event Listeners
+        const now = new Date();
+        timeLabels.push(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`);
+        azimuthData.push(horizontalServo);
+        elevationData.push(verticalServo);
+
+        if (timeLabels.length > 30) {
+            timeLabels.shift();
+            azimuthData.shift();
+            elevationData.shift();
+        }
+        historyChart.update();
+        updateUI();
+
+        const lastCheckDisplay = document.getElementById('last-online-check');
+        if (lastCheckDisplay) lastCheckDisplay.textContent = new Date().toLocaleTimeString();
+    });
+
+    // Listen to controls from Cloud (keeps multiple user dashboards in sync globally)
+    onValue(controlsRef, (snapshot) => {
+        const controls = snapshot.val();
+        if (!controls) return;
+
+        if (controls.manualMode !== undefined) {
+            if (controls.manualMode !== manualToggle.checked) {
+                manualToggle.checked = controls.manualMode;
+                if (controls.manualMode) {
+                    manualSlidersDiv.classList.remove('disabled-ui');
+                    hSlider.disabled = false;
+                    vSlider.disabled = false;
+                    sendBtn.disabled = false;
+                    trackerModeDisplay.textContent = 'MANUAL';
+                    trackerModeDisplay.style.color = 'var(--amber-main)';
+                } else {
+                    manualSlidersDiv.classList.add('disabled-ui');
+                    hSlider.disabled = true;
+                    vSlider.disabled = true;
+                    sendBtn.disabled = true;
+                    trackerModeDisplay.textContent = 'AUTO';
+                    trackerModeDisplay.style.color = 'var(--neon-cyan-main)';
+                }
+            }
+        }
+    });
+
+    // Event Listeners - Push User Inputs directly to Firebase Global Controls Room
     manualToggle.addEventListener('change', (e) => {
         const isManual = e.target.checked;
         if (isManual) {
@@ -334,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
             sendBtn.disabled = false;
             trackerModeDisplay.textContent = 'MANUAL';
             trackerModeDisplay.style.color = 'var(--amber-main)';
-            fetch(`http://${ESP_IP}/mode?val=1`, { mode: 'cors' }).catch(console.error);
+            update(controlsRef, { manualMode: true });
         } else {
             manualSlidersDiv.classList.add('disabled-ui');
             hSlider.disabled = true;
@@ -342,25 +296,26 @@ document.addEventListener("DOMContentLoaded", () => {
             sendBtn.disabled = true;
             trackerModeDisplay.textContent = 'AUTO';
             trackerModeDisplay.style.color = 'var(--neon-cyan-main)';
-            // Tell ESP to go back to Auto mode
-            fetch(`http://${ESP_IP}/mode?val=0`, { mode: 'cors' }).catch(console.error);
+            update(controlsRef, { manualMode: false });
         }
     });
 
     hSlider.addEventListener('input', () => {
         hSliderValText.textContent = `${hSlider.value}°`;
-        fetch(`http://${ESP_IP}/slider?axis=h&val=${hSlider.value}`, { mode: 'cors' }).catch(console.error);
+        update(controlsRef, { targetH: parseInt(hSlider.value) });
     });
 
     vSlider.addEventListener('input', () => {
         vSliderValText.textContent = `${vSlider.value}°`;
-        fetch(`http://${ESP_IP}/slider?axis=v&val=${vSlider.value}`, { mode: 'cors' }).catch(console.error);
+        update(controlsRef, { targetV: parseInt(vSlider.value) });
     });
 
     sendBtn.addEventListener('click', () => {
-        sendManualCommand(hSlider.value, vSlider.value);
-        fetch(`http://${ESP_IP}/slider?axis=h&val=${hSlider.value}`, { mode: 'cors' }).catch(console.error);
-        fetch(`http://${ESP_IP}/slider?axis=v&val=${vSlider.value}`, { mode: 'cors' }).catch(console.error);
+        update(controlsRef, {
+            targetH: parseInt(hSlider.value),
+            targetV: parseInt(vSlider.value),
+            forceTrigger: Date.now()
+        });
     });
 
     // Weather Integration
@@ -459,7 +414,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Loops
-    setInterval(fetchData, FETCH_INTERVAL);
     setInterval(updateUptime, 1000);
     setInterval(fetchWeatherData, 600000); // 10 minutes
     updateUI(); // Init
