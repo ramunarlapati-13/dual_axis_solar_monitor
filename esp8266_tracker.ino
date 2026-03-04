@@ -8,7 +8,7 @@
 #define WIFI_SSID "YOUR_WIFI_HOSTNAME_HERE"
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD_HERE"
 
-#define FIREBASE_HOST "dualaxissolar-535a2-default-rtdb.firebaseio.com"
+#define FIREBASE_HOST "YOUR_FIREBASE_PROJECT_ID.firebaseio.com"
 #define FIREBASE_AUTH "YOUR_FIREBASE_AUTH_KEY_HERE"
 
 // ==========================================

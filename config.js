@@ -6,7 +6,7 @@ const CONFIG = {
         apiKey: "YOUR_FIREBASE_API_KEY_HERE", // Paste your actual Firebase API key here (from .env)
         authDomain: "dualaxissolar-535a2.firebaseapp.com",
         projectId: "dualaxissolar-535a2",
-        databaseURL: "https://dualaxissolar-535a2-default-rtdb.firebaseio.com", // Add this explicit URL to ensure it works properly
+        databaseURL: "https://YOUR_FIREBASE_PROJECT_ID.firebaseio.com", // Add this explicit URL to ensure it works properly
         storageBucket: "dualaxissolar-535a2.firebasestorage.app",
         messagingSenderId: "909262885001",
         appId: "1:909262885001:web:6ab0e19e79e64df205f658",
