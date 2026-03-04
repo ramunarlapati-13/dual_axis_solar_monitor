@@ -2,6 +2,40 @@
 
 A responsive web dashboard designed to track and monitor a dual-axis solar tracking system connected to an ESP32. This interface visualizes real-time telemetry data including tracking history plots, manual override capabilities, sun position rendering, servo azimuth/elevation status, and SP (solar panel) signals tracking.
 
+## Table of Contents
+- [Dual-Axis Solar Monitoring System](#dual-axis-solar-monitoring-system)
+  - [Recent Features Added](#recent-features-added)
+  - [Getting Started](#getting-started)
+  - [Data Architecture & Calculations](#data-architecture--calculations)
+    - [Live Angle Rendering](#live-angle-rendering)
+    - [Estimated Power Generation Math](#estimated-power-generation-math)
+  - [Technologies Used](#technologies-used)
+- [ESP8266 Dual-Axis Solar Tracker](#esp8266-dual-axis-solar-tracker)
+  - [1. System Architecture](#1-system-architecture)
+  - [2. Required Components](#2-required-components)
+  - [3. Component Connections & Pin Configuration](#3-component-connections--pin-configuration)
+    - [Input: LDR Modules (Digital)](#input-ldr-modules-digital)
+    - [Output: Servo Motors](#output-servo-motors)
+  - [4. Circuit Schematic Notes](#4-circuit-schematic-notes)
+  - [5. Software Features](#5-software-features)
+    - [A. The Web Dashboard](#a-the-web-dashboard)
+    - [B. Code Logic Breakdown](#b-code-logic-breakdown)
+      - [1. The Sensor Configuration](#1-the-sensor-configuration)
+      - [2. The "Darkness" & Home Logic](#2-the-darkness--home-logic)
+      - [3. Movement Logic (The "Brain")](#3-movement-logic-the-brain)
+      - [4. Smooth Return Function](#4-smooth-return-function)
+      - [Potential Issues to Watch For](#potential-issues-to-watch-for)
+  - [6. Calibration Procedure](#6-calibration-procedure)
+  - [7. Maintenance & Safety](#7-maintenance--safety)
+  - [8. Source Code](#8-source-code)
+  - [9. Website Structure & Data Flow](#9-website-structure--data-flow)
+    - [A. Project Structure](#a-project-structure)
+    - [B. End-to-End Data Flow (Telemetry & Automation)](#b-end-to-end-data-flow-telemetry--automation)
+      - [1. Telemetry Generation (ESP8266 -> Database)](#1-telemetry-generation-esp8266---database)
+      - [2. Telemetry Visualization (Database -> Web Dashboard)](#2-telemetry-visualization-database---web-dashboard)
+      - [3. Manual Override Controls (Dashboard -> Database)](#3-manual-override-controls-dashboard---database)
+      - [4. Physical Actuation (Database -> ESP8266)](#4-physical-actuation-database---esp8266)
+
 ## Recent Features Added
 
 We've recently implemented significant enhancements to the solar tracker:
@@ -104,10 +138,38 @@ The ESP8266 hosts a local web server. When you navigate to the device's IP addre
 *   **Manual Sliders:** Override the auto-tracking to position the panel manually.
 *   **Mode Toggle:** Switch between "Auto" and "Manual" control.
 
-### B. Smart Logic Functions
-*   **Stop Logic:** If all 4 sensors are active (bright light), the servos stop moving to prevent jitter.
-*   **Smooth Return:** If it stays dark for more than 3 seconds, the system moves the servos slowly back to a "Home" position (90°, 45°).
-*   **Hysteresis/Step Control:** The movement uses a 2-degree step size with a 15ms delay to match the snappy response seen in high-end DIY trackers.
+### B. Code Logic Breakdown
+
+#### 1. The Sensor Configuration
+The code defines four pins as inputs. Because it uses `digitalRead`, it is likely using LDR (Light Dependent Resistor) modules with digital outputs. These modules usually have a small potentiometer (screw) that allows you to set a brightness threshold.
+*   **LOW:** Light detected (above the threshold).
+*   **HIGH:** Darkness (below the threshold).
+
+#### 2. The "Darkness" & Home Logic
+One of the smartest features in this code is the Automatic Return.
+*   **The Check:** If all four sensors are HIGH (Dark), a timer (`darkStartTime`) starts.
+*   **The Timer:** If it stays dark for more than 3 seconds (3000ms), the tracker assumes the sun has set or it's nighttime.
+*   **The Action:** It calls `smoothReturn()` to move the servos back to the "Home" position (90°, 45°), waiting for the sun to rise the next day.
+
+#### 3. Movement Logic (The "Brain")
+The code compares groups of sensors to decide which way to tilt.
+
+| If these see light...  | And these don't...      | Action                           |
+| :---                   | :---                    | :---                             |
+| Top (TL or TR)         | Bottom (BL or BR)       | Tilt Up (Decreases `posV`)       |
+| Bottom (BL or BR)      | Top (TL or TR)          | Tilt Down (Increases `posV`)     |
+| Left (TL or BL)        | Right (TR or BR)        | Turn Left (Decreases `posH`)     |
+| Right (TR or BR)       | Left (TL or BL)         | Turn Right (Increases `posH`)    |
+
+**Crucial Observation:** In the "Vertical" logic, `posV -= 2` is used for the top sensors. Depending on how your servo is mounted, this might move the tracker down instead of up. You may need to swap the `+` and `-` symbols during physical testing.
+
+#### 4. Smooth Return Function
+Instead of snapping the servos back to 90° instantly—which can be jerky and draw too much current—the `smoothReturn()` function uses a while loop to move the servos 1 degree at a time every 30 milliseconds until they reach the home coordinates.
+
+#### Potential Issues to Watch For
+*   **Sensitivity Jitter:** Because this uses `digitalRead`, the tracker will only move when the light hits a very specific threshold. It won't "search" for the brightest spot; it just tries to keep all sensors "ON."
+*   **Pin Labels:** The comments mention D1, D2, etc. This suggests you are using an ESP8266 (NodeMCU/Wemos) rather than a standard Arduino Uno. Make sure your wiring matches the GPIO numbers (e.g., `PIN_TL` 5 is actually GPIO 5).
+*   **Power:** Two servos moving at once can cause a "brownout" if powered only by the Arduino's 5V pin. It's usually better to power the servos from an external 5V-6V source (sharing a common Ground).
 
 ## 6. Calibration Procedure
 
