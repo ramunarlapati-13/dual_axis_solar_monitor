@@ -361,7 +361,7 @@ void loop() {
 
 This project features a seamless real-time data flow bridging the physical ESP8266 hardware device, a cloud-based Firebase Realtime Database, and a frontend Web Dashboard. Here is a detailed breakdown of the infrastructure:
 
-### A. Repository Structure
+### A. Project Structure
 
 ```text
 dual_axis_solar_monitor/
