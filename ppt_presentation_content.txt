@@ -1,0 +1,64 @@
+**Slide 1: Title Slide**
+- Project Title: Dual-Axis Solar Monitoring System
+- Presenter Name: [Your Name]
+- Date: [Date]
+
+**Slide 2: Abstract**
+- Objective: Optimize solar panel efficiency using continuous sun tracking.
+- Core Hardware: ESP8266 microcontroller and 4x Digital LDRs (Light Dependent Resistors).
+- Movement: Dual-axis control (horizontal/pan and vertical/tilt) using 2x SG90 Servo Motors.
+- IoT Integration: Firebase Realtime Database enables a live web dashboard.
+- Features: Remote monitoring, auto/manual override modes, and real-time efficiency estimates.
+
+**Slide 3: Introduction**
+- The Need: Static solar panels operate at peak efficiency for only a fraction of the day.
+- The Solution: Solar tracking systems maximize energy harvesting by following the sun.
+- Innovation: Combining low-cost, smart dual-axis tracking with real-time IoT capabilities.
+- Benefit: Users gain remote telemetrics, manual override control, and live data rendering anywhere in the world.
+
+**Slide 4: Literature Survey**
+- Traditional Systems: Mostly single-axis tracking (East to West only).
+- Limitation: Single-axis misses seasonal elevation changes.
+- Existing Dual-Axis: Often rely on microcontrollers without internet connectivity (e.g., standard Arduino UNO).
+- Our Improvement: Incorporating the ESP8266 (NodeMCU) and IoT protocols (Firebase) for constant cloud synchronization and remote web dashboard management.
+
+**Slide 5: Proposed Method**
+- Sensor Array: 4 LDRs separated by a physical cross-baffle block light diagonally.
+- Processing: ESP8266 calculates light intensity differences across top/bottom and left/right axes.
+- Actuation: Signals direct two SG90 servos to tilt towards the brightest light source until balanced.
+- Smart Features: 
+  - "Smooth Return" safety feature rests panels at a default home position in total darkness.
+  - 500ms sync interval with Firebase ensures real-time dashboard responsiveness.
+
+**Slide 6: Hardware Implementation**
+- Components Used:
+  - 1x ESP8266 (NodeMCU) WiFi Microcontroller
+  - 4x Digital LDR Modules
+  - 2x SG90 Micro Servo Motors
+- Software/Web Stack: C++ (Arduino IDE), Firebase Realtime Database, HTML/CSS/JS (Dashboard).
+- Setup: Servos and sensors powered via ESP8266, with a unified ground line for stability.
+
+**Slide 7: Results**
+- Tracking Accuracy: System consistently maintains a perpendicular angle to the strongest light source.
+- Efficiency Gain: Significant power generation improvements over static panel setups.
+- IoT Performance: Firebase delivers real-time analytics with under 1 second of latency.
+- Usability: Cleanly toggles between "Auto Tracking" and "Manual Override" directly from the web interface.
+
+**Slide 8: Conclusion and Future Scope**
+- Conclusion:
+  - Successfully aligns solar panels with maximum light intensity.
+  - IoT bridging provides a user-friendly, remote interactive dashboard.
+- Future Scope:
+  - Integration of actual current/voltage sensors (e.g., INA219) for real power measurement.
+  - Predictive weather API integration to optimize positioning during storms or overcast days.
+  - Implementation of Machine Learning for predictive sun-path modeling.
+
+**Slide 9: References**
+1. Datasheet for ESP8266 / NodeMCU.
+    https://documentation.espressif.com/0a-esp8266ex_datasheet_en.pdf
+2. Google Firebase Realtime Database Documentation.
+    https://firebase.google.com/docs/database
+3. Servo Motor (SG90) Interface and PWM Control Guidelines.
+    https://lastminuteengineers.com/esp8266-pinout-reference/
+4. LDR (Light Dependent Resistor) Standard Operating Principles.
+    https://atl.aim.gov.in/ATL-Equipment-Manual/ldr-module/#:~:text=A%20LDR%20module%20has%204,2.

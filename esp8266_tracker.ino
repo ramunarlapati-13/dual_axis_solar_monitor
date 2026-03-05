@@ -5,38 +5,36 @@
 // ==========================================
 // 1. CONFIGURATION
 // ==========================================
-#define WIFI_SSID "YOUR_WIFI_HOSTNAME_HERE"
-#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD_HERE"
+#define WIFI_SSID "ramu"
+#define WIFI_PASSWORD "ramu@123"
 
 #define FIREBASE_HOST "YOUR_FIREBASE_PROJECT_ID.firebaseio.com"
 #define FIREBASE_AUTH "YOUR_FIREBASE_AUTH_KEY_HERE"
 
 // ==========================================
-// 2. HARDWARE PINS (Based on Documentation)
+// 2. HARDWARE PINS (From User's Perfect Code)
 // ==========================================
-// Digital LDR Modules (Input)
-const int PIN_LDR_TL = D1; // Top Left (GPIO 5)
-const int PIN_LDR_TR = D2; // Top Right (GPIO 4)
-const int PIN_LDR_BL = D5; // Bottom Left (GPIO 14)
-const int PIN_LDR_BR = D6; // Bottom Right (GPIO 12)
+#define PIN_TL 5  // D1
+#define PIN_TR 4  // D2
+#define PIN_BL 14 // D5
+#define PIN_BR 12 // D6
 
-// Servo Motors (Output)
-const int servoH_pin = D7; // Horizontal Base (GPIO 13)
-const int servoV_pin = D8; // Vertical Tilt (GPIO 15)
-
-// Note: Most standard blue digital LDR modules output LOW when light is detected. 
-// Change to HIGH if your specific modules operate inversely.
-#define LIGHT_DETECTED LOW
+Servo horizontal; 
+Servo vertical;
 
 // ==========================================
 // 3. SYSTEM VARIABLES
 // ==========================================
-Servo horizontalServo;
-Servo verticalServo;
+// Current Positions
+int posH = 90; 
+int posV = 45;
 
-// Current Angles
-int hAngle = 90;
-int vAngle = 45;
+// Home Positions
+const int homeH = 90;
+const int homeV = 45;
+
+unsigned long darkStartTime = 0;
+bool isHome = false;
 
 // Cloud Sync Variables
 FirebaseData firebaseData;
@@ -47,13 +45,28 @@ FirebaseConfig config;
 unsigned long lastPublishTime = 0;
 unsigned long lastFetchTime = 0;  // Stop Firebase from freezing the servos
 const int PUBLISH_INTERVAL = 500; // Cloud update every 0.5 seconds
-const int FETCH_INTERVAL = 500;   // Cloud read every 0.5 seconds
-unsigned long darkStartTime = 0;  // For 3-second return-to-home logic
 
 // Control States
 bool manualMode = false;
 int targetH = 90;
 int targetV = 45;
+
+// ==========================================
+// FUNCTION: Smooth Return home
+// ==========================================
+void smoothReturn() {
+  while (posH != homeH || posV != homeV) {
+    if (posH < homeH) posH++;
+    else if (posH > homeH) posH--;
+
+    if (posV < homeV) posV++;
+    else if (posV > homeV) posV--;
+
+    horizontal.write(posH);
+    vertical.write(posV);
+    delay(30); // Controls the "Smoothness" of the return
+  }
+}
 
 // ==========================================
 // SETUP
@@ -63,16 +76,17 @@ void setup() {
   delay(100);
 
   // Configure LDR Input Pins
-  pinMode(PIN_LDR_TL, INPUT);
-  pinMode(PIN_LDR_TR, INPUT);
-  pinMode(PIN_LDR_BL, INPUT);
-  pinMode(PIN_LDR_BR, INPUT);
+  pinMode(PIN_TL, INPUT);
+  pinMode(PIN_TR, INPUT);
+  pinMode(PIN_BL, INPUT);
+  pinMode(PIN_BR, INPUT);
 
   // Attach & Initialize Servos to Home Position
-  horizontalServo.attach(servoH_pin);
-  verticalServo.attach(servoV_pin);
-  horizontalServo.write(hAngle);
-  verticalServo.write(vAngle);
+  horizontal.attach(13); // D7
+  vertical.attach(15);   // D8
+  
+  horizontal.write(posH);
+  vertical.write(posV);
 
   // Connect to WiFi
   Serial.println("\nConnecting to WiFi...");
@@ -107,7 +121,7 @@ void loop() {
   // ----------------------------------------------------
   // A. FETCH CLOUD CONTROLS FROM DASHBOARD (Every 1000ms)
   // ----------------------------------------------------
-  if (millis() - lastFetchTime >= 1000) { // Check cloud every 1 second
+  if (millis() - lastFetchTime >= 1000) { 
     lastFetchTime = millis();
     
     // 1. Only grab the true/false state first.
@@ -115,7 +129,7 @@ void loop() {
       manualMode = firebaseData.boolData();
     }
     
-    // 2. Only grab the target angles IF manual control is active!
+    // 2. Only grab target angles IF manual control is active!
     // This stops massive HTTP lag from freezing the servos in Auto mode.
     if (manualMode) {
       if (Firebase.getInt(firebaseData, "/solar_tracker/controls/targetH")) {
@@ -132,68 +146,65 @@ void loop() {
   // ----------------------------------------------------
   if (manualMode) {
     // Smoothly step towards target slider angle instead of instantly jumping
-    if (hAngle < targetH) hAngle++;
-    else if (hAngle > targetH) hAngle--;
+    if (posH < targetH) posH++;
+    else if (posH > targetH) posH--;
 
-    if (vAngle < targetV) vAngle++;
-    else if (vAngle > targetV) vAngle--;
+    if (posV < targetV) posV++;
+    else if (posV > targetV) posV--;
 
-    horizontalServo.write(hAngle);
-    verticalServo.write(vAngle);
+    horizontal.write(posH);
+    vertical.write(posV);
     delay(15); 
   } 
   // ----------------------------------------------------
-  // C. SMART AUTO-TRACKING LOGIC
+  // C. SMART AUTO-TRACKING LOGIC (Perfect Code)
   // ----------------------------------------------------
   else {
-    // 1. Read the 4 Digital Sensors (Inverted reading based on user's exact specification)
-    bool tl = !digitalRead(PIN_LDR_TL);
-    bool tr = !digitalRead(PIN_LDR_TR);
-    bool bl = !digitalRead(PIN_LDR_BL);
-    bool br = !digitalRead(PIN_LDR_BR);
-    
-    // SMOOTH RETURN LOGIC: Pitch black -> Return Home (90, 45) after 3 secs
+    // Read sensors (On these modules: LOW = Light, HIGH = Dark/0)
+    bool tl = digitalRead(PIN_TL) == LOW;
+    bool tr = digitalRead(PIN_TR) == LOW;
+    bool bl = digitalRead(PIN_BL) == LOW;
+    bool br = digitalRead(PIN_BR) == LOW;
+
+    // --- DARKNESS / HOME CHECK ---
     if (!tl && !tr && !bl && !br) {
-      if (darkStartTime == 0) {
-        darkStartTime = millis(); 
-      } 
-      else if (millis() - darkStartTime > 3000) {
-        // Return smoothly towards home
-        if (hAngle < 90) hAngle++; else if (hAngle > 90) hAngle--;
-        if (vAngle < 45) vAngle++; else if (vAngle > 45) vAngle--;
-        
-        horizontalServo.write(hAngle); 
-        verticalServo.write(vAngle);
-        delay(15);
-      }
-    } 
-    // TRACKING LOGIC
-    else {
-      darkStartTime = 0; // Reset dark timer since we see light
+      if (darkStartTime == 0) darkStartTime = millis();
       
-      // Stop logic: if all 4 see light, do nothing to prevent jitter
-      if (tl && tr && bl && br) {
-        // Perfect alignment, keep angle
-      } else {
-        // Vertical logic
-        if ((tl || tr) && !(bl || br)) { 
-          if(vAngle < 150) vAngle += 2; 
-        }
-        else if (!(tl || tr) && (bl || br)) { 
-          if(vAngle > 20) vAngle -= 2; 
+      // If it has been dark for 3 seconds and we aren't home yet
+      if (millis() - darkStartTime > 3000 && !isHome) {
+        smoothReturn();
+        isHome = true;
+      }
+      // Note: We skip tracking movements here, but we don't 'return;' 
+      // so we can still publish telemetry to Firebase.
+    } 
+    else {
+      // Light detected - reset the timer
+      darkStartTime = 0;
+      isHome = false;
+
+      // --- STOP LOGIC (When perfectly centered) ---
+      // We skip movement if perfectly centered, but don't return to allow telemetry
+      if (!(tl && tr && bl && br)) { 
+        
+        // --- FAST MOVEMENT LOGIC ---
+        // Vertical
+        if ((tl || tr) && !(bl || br)) {
+          if (posV < 150) posV -= 2; 
+        } else if (!(tl || tr) && (bl || br)) {
+          if (posV > 20) posV += 2;  
         }
 
-        // Horizontal logic
-        if ((tl || bl) && !(tr || br)) { 
-          if(hAngle > 0) hAngle -= 2; 
-        }
-        else if (!(tl || bl) && (tr || br)) { 
-          if(hAngle < 180) hAngle += 2; 
+        // Horizontal
+        if ((tl || bl) && !(tr || br)) {
+          if (posH > 0) posH -= 2;   
+        } else if (!(tl || bl) && (tr || br)) {
+          if (posH < 180) posH += 2;  
         }
 
-        horizontalServo.write(hAngle); 
-        verticalServo.write(vAngle);
-        delay(15);
+        vertical.write(posV);
+        horizontal.write(posH);
+        delay(15); 
       }
     }
   }
@@ -207,14 +218,14 @@ void loop() {
     FirebaseJson json;
     
     // Live Angles
-    json.set("h", hAngle);
-    json.set("v", vAngle);
+    json.set("h", posH);
+    json.set("v", posV);
     
     // Digital Sensors (Translated to 0 or 1024 for Web Dashboard math)
-    json.set("ldrTL", digitalRead(PIN_LDR_TL) == LIGHT_DETECTED ? 1024 : 0);
-    json.set("ldrTR", digitalRead(PIN_LDR_TR) == LIGHT_DETECTED ? 1024 : 0);
-    json.set("ldrBL", digitalRead(PIN_LDR_BL) == LIGHT_DETECTED ? 1024 : 0);
-    json.set("ldrBR", digitalRead(PIN_LDR_BR) == LIGHT_DETECTED ? 1024 : 0);
+    json.set("ldrTL", digitalRead(PIN_TL) == LOW ? 1024 : 0);
+    json.set("ldrTR", digitalRead(PIN_TR) == LOW ? 1024 : 0);
+    json.set("ldrBL", digitalRead(PIN_BL) == LOW ? 1024 : 0);
+    json.set("ldrBR", digitalRead(PIN_BR) == LOW ? 1024 : 0);
     
     // Operating Status
     String statusStr = manualMode ? "MANUAL OVERRIDE" : "AUTO TRACKING";
