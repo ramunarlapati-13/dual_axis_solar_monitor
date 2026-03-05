@@ -2,14 +2,15 @@
 #include <Servo.h>
 #include <FirebaseESP8266.h>
 
+
 // ==========================================
 // 1. CONFIGURATION
 // ==========================================
-#define WIFI_SSID "ramu"
-#define WIFI_PASSWORD "ramu@123"
+#define WIFI_SSID "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
 
-#define FIREBASE_HOST "YOUR_FIREBASE_PROJECT_ID.firebaseio.com"
-#define FIREBASE_AUTH "YOUR_FIREBASE_AUTH_KEY_HERE"
+#define FIREBASE_HOST "YOUR_FIREBASE_HOST"
+#define FIREBASE_AUTH "YOUR_FIREBASE_AUTH"
 
 // ==========================================
 // 2. HARDWARE PINS (From User's Perfect Code)
@@ -18,6 +19,9 @@
 #define PIN_TR 4  // D2
 #define PIN_BL 14 // D5
 #define PIN_BR 12 // D6
+
+// Voltage Monitor Pin
+const int sensorPin = A0; 
 
 Servo horizontal; 
 Servo vertical;
@@ -40,6 +44,8 @@ bool isHome = false;
 FirebaseData firebaseData;
 FirebaseAuth auth;
 FirebaseConfig config;
+
+
 
 // Timers
 unsigned long lastPublishTime = 0;
@@ -111,13 +117,14 @@ void setup() {
 
   // Publish immediate online status to cloud
   Firebase.setBool(firebaseData, "/.info/connected", true);
+
+
 }
 
 // ==========================================
 // MAIN LOOP
 // ==========================================
 void loop() {
-  
   // ----------------------------------------------------
   // A. FETCH CLOUD CONTROLS FROM DASHBOARD (Every 1000ms)
   // ----------------------------------------------------
@@ -195,12 +202,16 @@ void loop() {
           if (posV > 20) posV += 2;  
         }
 
-        // Horizontal
-        if ((tl || bl) && !(tr || br)) {
-          if (posH > 0) posH -= 2;   
-        } else if (!(tl || bl) && (tr || br)) {
-          if (posH < 180) posH += 2;  
+        // Horizontal — require BOTH sensors on one side to agree (deadband)
+        // This prevents one slightly-brighter LDR from sweeping servo to 180°
+        bool leftSeen  = (tl && bl);  // BOTH left sensors must see light
+        bool rightSeen = (tr && br);  // BOTH right sensors must see light
+        if (leftSeen && !rightSeen) {
+          if (posH > 0) posH -= 2;
+        } else if (rightSeen && !leftSeen) {
+          if (posH < 180) posH += 2;
         }
+        // If only ONE right sensor fires, hold position — avoids 180° creep
 
         vertical.write(posV);
         horizontal.write(posH);
@@ -221,6 +232,17 @@ void loop() {
     json.set("h", posH);
     json.set("v", posV);
     
+    // Voltage Monitoring with Noise Filtering
+    int rawValue = analogRead(sensorPin);
+    
+    // SOFTWARE NOISE FLOOR: 
+    // If the panel is removed, the A0 pin "floats" and picks up noise.
+    // We ignore any signals below a threshold (approx 0.05V) to show a clean 0V.
+    if (rawValue < 10) rawValue = 0; 
+    
+    float voltage = rawValue * (5.0 / 1023.0);
+    json.set("voltage", voltage);
+    
     // Digital Sensors (Translated to 0 or 1024 for Web Dashboard math)
     json.set("ldrTL", digitalRead(PIN_TL) == LOW ? 1024 : 0);
     json.set("ldrTR", digitalRead(PIN_TR) == LOW ? 1024 : 0);
@@ -232,5 +254,14 @@ void loop() {
     json.set("status", statusStr);
 
     Firebase.updateNode(firebaseData, "/solar_tracker/data", json);
+
+    // Print to Serial Monitor
+    Serial.print("IP: ");
+    Serial.print(WiFi.localIP());
+    Serial.print(" | Status: ");
+    Serial.print(statusStr);
+    Serial.print(" | Voltage: ");
+    Serial.print(voltage, 2);
+    Serial.println(" V");
   }
 }

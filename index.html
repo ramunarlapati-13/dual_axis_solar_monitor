@@ -22,11 +22,6 @@
         <!-- Header -->
         <header class="glass-panel header-container">
             <h1 class="logo-text">SOLAR TRACKER <span>V1.0</span></h1>
-            <div class="ip-config-panel">
-                <input type="text" id="esp-ip-input" placeholder="Device IP (e.g. 192.168.137.23)"
-                    value="192.168.137.23">
-                <button id="update-ip-btn" class="mini-action-btn">CONNECT</button>
-            </div>
             <div class="status-indicator" id="system-status-indicator">
                 <div class="pulsing-dot" id="system-status-dot"></div>
                 <span class="status-text" id="system-status-text">System Online</span>
@@ -56,17 +51,31 @@
 
             <!-- Estimated Power Generation -->
             <section class="glass-panel power-card">
-                <h2>Estimated Power Generation</h2>
+                <h2>Real-Time Power Output</h2>
                 <div class="power-stats">
+                    <!-- Input: mV reading -->
+                    <div class="stat-item">
+                        <span class="stat-label">📡 Sensor Input <small
+                                style="color:var(--text-secondary);">(millivolts, mV)</small></span>
+                        <span id="power-mv" class="stat-value neon-text" style="color: #94a3b8;">-- mV</span>
+                    </div>
+                    <!-- Converted Volts -->
+                    <div class="stat-item">
+                        <span class="stat-label">⚡ Panel Voltage <small style="color:var(--text-secondary);">(Volts,
+                                V)</small></span>
+                        <span id="power-volts" class="stat-value neon-text">-- V</span>
+                    </div>
+                    <!-- Output Watts -->
                     <div class="stat-item power-highlight">
-                        <span class="stat-label">Expected Output (Based on Weather)</span>
+                        <span class="stat-label">🔋 Estimated Output <small style="color:var(--text-secondary);">(Watts,
+                                W)</small></span>
                         <span id="power-estimate" class="stat-value neon-text"
                             style="color: var(--amber-main); text-shadow: 0 0 10px var(--amber-glow);">-- W</span>
                     </div>
                 </div>
                 <div id="power-formula"
-                    style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 1rem; text-align: center;">
-                    Formula: Max (100W) × Sun Angle (~--%) × Sky Clarity (--%)
+                    style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 1rem; text-align: center; line-height: 1.6;">
+                    Formula: Voltage (V) × Assumed Panel Current (0.5 A) = Power (W)
                 </div>
             </section>
 
@@ -86,9 +95,17 @@
                 </div>
             </section>
 
-            <!-- Gauges Card: Horizontal & Vertical Servo Positions -->
-            <section class="glass-panel gauges-card">
-                <h2>Servo Positions</h2>
+            <!-- Unified Servomotor Control Card -->
+            <section class="glass-panel gauges-card" id="control-card">
+                <div class="header-with-toggle" style="margin-bottom: 1.5rem;">
+                    <h2 style="margin-bottom: 0;">Servomotor Control</h2>
+                    <div id="mode-switcher" class="mode-switch-group">
+                        <button id="btn-auto" class="mode-btn active">Auto</button>
+                        <button id="btn-manual" class="mode-btn">Manual</button>
+                        <input type="checkbox" id="manual-mode-toggle" style="display:none;">
+                    </div>
+                </div>
+
                 <div class="gauges-wrapper">
                     <div class="gauge-item">
                         <div class="half-circle-gauge">
@@ -97,7 +114,7 @@
                                 <div class="gauge-value"><span id="horiz-text" class="neon-text">90</span>°</div>
                             </div>
                         </div>
-                        <p>Horizontal</p>
+                        <p>Horizontal (Azimuth)</p>
                     </div>
                     <div class="gauge-item">
                         <div class="half-circle-gauge">
@@ -107,58 +124,30 @@
                                 <div class="gauge-value"><span id="vert-text" class="neon-text">45</span>°</div>
                             </div>
                         </div>
-                        <p>Vertical</p>
+                        <p>Vertical (Elevation)</p>
+                    </div>
+                </div>
+
+                <!-- Sliders Integrated Here -->
+                <div class="slider-controls disabled-ui" id="manual-sliders" style="margin-top: 2rem;">
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>Adjust Azimuth</label>
+                            <span id="manual-h-val" class="neon-text">90°</span>
+                        </div>
+                        <input type="range" id="manual-h-slider" min="0" max="180" value="90" disabled>
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>Adjust Elevation</label>
+                            <span id="manual-v-val" class="neon-text">45°</span>
+                        </div>
+                        <input type="range" id="manual-v-slider" min="20" max="150" value="45" disabled>
                     </div>
                 </div>
             </section>
 
-            <!-- SP Signals (Solar Panel Sensor Monitoring) -->
-            <section class="ldr-section">
-                <div class="section-title-wrap"
-                    style="grid-column: span 2; display: flex; align-items: center; justify-content: space-between;">
-                    <h2>SP Signals</h2>
-                    <span class="stat-label" style="font-size: 0.7rem; opacity: 0.6;">CONTINUOUS TRACKING</span>
-                </div>
-                <div class="glass-panel ldr-card">
-                    <div class="ldr-header">
-                        <h3>Top Left (TL)</h3>
-                        <span class="neon-text ldr-val" id="ldr-tl-text">80%</span>
-                    </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="ldr-tl" style="width: 80%;"></div>
-                    </div>
-                </div>
 
-                <div class="glass-panel ldr-card">
-                    <div class="ldr-header">
-                        <h3>Top Right (TR)</h3>
-                        <span class="neon-text ldr-val" id="ldr-tr-text">75%</span>
-                    </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="ldr-tr" style="width: 75%;"></div>
-                    </div>
-                </div>
-
-                <div class="glass-panel ldr-card">
-                    <div class="ldr-header">
-                        <h3>Bottom Left (BL)</h3>
-                        <span class="neon-text ldr-val" id="ldr-bl-text">40%</span>
-                    </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="ldr-bl" style="width: 40%;"></div>
-                    </div>
-                </div>
-
-                <div class="glass-panel ldr-card">
-                    <div class="ldr-header">
-                        <h3>Bottom Right (BR)</h3>
-                        <span class="neon-text ldr-val" id="ldr-br-text">45%</span>
-                    </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="ldr-br" style="width: 45%;"></div>
-                    </div>
-                </div>
-            </section>
 
             <!-- Direction & Stats Container -->
             <div class="sidebar-layout">
@@ -180,8 +169,19 @@
 
                 <!-- Daily Statistics -->
                 <section class="glass-panel stats-card">
-                    <h2>Daily Statistics</h2>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                        <h2 style="margin-bottom: 0;">Daily Statistics</h2>
+                        <button id="view-history-btn" class="mini-action-btn"
+                            style="border-color: var(--amber-main); color: var(--amber-main); background: rgba(255, 183, 3, 0.1);">View
+                            Past Data</button>
+                    </div>
                     <div class="stats-list">
+                        <div class="stat-row">
+                            <span class="stat-label">Panel Voltage</span>
+                            <span class="stat-value neon-text" style="color: var(--amber-main);" id="panel-voltage">0.00
+                                V</span>
+                        </div>
                         <div class="stat-row">
                             <span class="stat-label">System Uptime</span>
                             <span class="stat-value neon-text" id="uptime">00:00:00</span>
@@ -197,8 +197,7 @@
                         </div>
                         <div class="stat-row">
                             <span class="stat-label">Network Status</span>
-                            <span class="stat-value text-connected" id="network-status">Connected (IP:
-                                192.168.137.23)</span>
+                            <span class="stat-value text-connected" id="network-status">Connected (Cloud)</span>
                         </div>
                         <div class="stat-row">
                             <span class="stat-label">Online Check</span>
@@ -207,49 +206,81 @@
                     </div>
                 </section>
 
-                <!-- Manual Controls -->
-                <section class="glass-panel manual-control-card">
-                    <div class="header-with-toggle">
-                        <h2>Manual Override</h2>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="manual-mode-toggle">
-                            <span class="toggle-slider"></span>
-                        </label>
+
+            </div>
+
+            <!-- Real-Time Charts Row (Side by Side) -->
+            <div class="charts-row">
+                <!-- Servo History Graph -->
+                <section class="glass-panel chart-card" id="servo-chart-card">
+                    <h2 class="neon-text">Motor Response History <span>(Degrees)</span></h2>
+                    <div class="chart-container">
+                        <canvas id="servoChart"></canvas>
                     </div>
-                    <div class="slider-controls disabled-ui" id="manual-sliders">
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Azimuth (Horizontal)</label>
-                                <span id="manual-h-val" class="neon-text">90°</span>
-                            </div>
-                            <input type="range" id="manual-h-slider" min="0" max="180" value="90" disabled>
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Elevation (Vertical)</label>
-                                <span id="manual-v-val" class="neon-text">45°</span>
-                            </div>
-                            <input type="range" id="manual-v-slider" min="20" max="150" value="45" disabled>
-                        </div>
-                        <button id="send-manual-btn" class="action-btn" disabled>Send Command</button>
+                </section>
+
+                <!-- Voltage History Graph -->
+                <section class="glass-panel chart-card" id="voltage-chart-card">
+                    <h2 class="neon-text" style="color: var(--amber-main);">Panel Performance History
+                        <span>(Voltage)</span>
+                    </h2>
+                    <div class="chart-container">
+                        <canvas id="voltageChart"></canvas>
                     </div>
                 </section>
             </div>
 
-            <!-- History Tracking Chart -->
-            <section class="glass-panel chart-card">
-                <h2>Tracking History (Azimuth vs Elevation)</h2>
-                <div class="chart-container">
-                    <canvas id="historyChart"></canvas>
-                </div>
-            </section>
-
         </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <span>Built by</span>
+        <a href="https://github.com/ramunarlapati-13" target="_blank" rel="noopener">Ramu Narlapati</a>
+        <span class="footer-divider">·</span>
+        <span>Dual-Axis Solar Monitoring System</span>
+        <span class="footer-divider">·</span>
+        <a class="github-icon" href="https://github.com/ramunarlapati-13/dual_axis_solar_monitor" target="_blank"
+            rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                    d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+            </svg>
+            View on GitHub ↗
+        </a>
+    </footer>
+
+    <!-- History Modal -->
+    <div id="history-modal" class="modal">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h2 class="neon-text">System History (Last 24h)</h2>
+                <button id="close-modal" class="mini-action-btn">&times; Close</button>
+            </div>
+            <div class="history-charts-wrapper"
+                style="flex-grow: 1; display: flex; flex-direction: column; gap: 2rem; overflow-y: auto; padding-right: 1rem;">
+                <div class="history-chart-container" style="min-height: 350px;">
+                    <h3 style="margin-bottom: 0.5rem; font-size: 1rem; color: var(--text-secondary);">Servo Movement
+                        (Degrees)</h3>
+                    <canvas id="pastServoChart"></canvas>
+                </div>
+                <div class="history-chart-container" style="min-height: 350px;">
+                    <h3 style="margin-bottom: 0.5rem; font-size: 1rem; color: var(--text-secondary);">Voltage Generation
+                        (Volts)</h3>
+                    <canvas id="pastVoltageChart"></canvas>
+                </div>
+            </div>
+            <div class="history-controls">
+                <button id="clear-history-btn" class="mini-action-btn"
+                    style="border-color: #ff3333; color: #ff3333; background: rgba(255, 51, 51, 0.1);">Clear
+                    History</button>
+            </div>
+        </div>
     </div>
 
     <!-- Chart.js for History Plot -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Configuration file for sensitive data -->
+    <!-- config.js must load BEFORE script.js so CONFIG is available -->
     <script src="config.js"></script>
     <script type="module" src="script.js"></script>
 </body>

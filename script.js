@@ -1,6 +1,6 @@
 // Simulate Solar Tracker System Data
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getDatabase, ref, onValue, set, update, push, get, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     // DOM Elements
@@ -12,14 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const vertGaugeFill = document.getElementById("vert-gauge-fill");
     const vertText = document.getElementById("vert-text");
 
-    const ldrTL = document.getElementById("ldr-tl");
-    const ldrTLText = document.getElementById("ldr-tl-text");
-    const ldrTR = document.getElementById("ldr-tr");
-    const ldrTRText = document.getElementById("ldr-tr-text");
-    const ldrBL = document.getElementById("ldr-bl");
-    const ldrBLText = document.getElementById("ldr-bl-text");
-    const ldrBR = document.getElementById("ldr-br");
-    const ldrBRText = document.getElementById("ldr-br-text");
+
 
     const directionDisplay = document.getElementById("direction-display");
     const arrowUp = document.querySelector(".arrow.up");
@@ -29,6 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const uptimeDisplay = document.getElementById("uptime");
     const powerEfficiencyDisplay = document.getElementById("power-efficiency");
+    const panelVoltageDisplay = document.getElementById("panel-voltage");
     const networkStatusDisplay = document.getElementById("network-status");
     const systemStatusIndicator = document.getElementById("system-status-indicator");
     const systemStatusText = document.getElementById("system-status-text");
@@ -41,15 +35,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const vSlider = document.getElementById("manual-v-slider");
     const hSliderValText = document.getElementById("manual-h-val");
     const vSliderValText = document.getElementById("manual-v-val");
-    const sendBtn = document.getElementById("send-manual-btn");
+    const btnAuto = document.getElementById("btn-auto");
+    const btnManual = document.getElementById("btn-manual");
 
-    // Chart Configuration
-    const ctx = document.getElementById('historyChart').getContext('2d');
+    // --- Chart Configurations ---
+    const servoCtx = document.getElementById('servoChart').getContext('2d');
+    const voltageCtx = document.getElementById('voltageChart').getContext('2d');
     const timeLabels = [];
     const azimuthData = [];
     const elevationData = [];
+    const voltageData = [];
 
-    const historyChart = new Chart(ctx, {
+    // Servo Positions History Chart
+    const servoChart = new Chart(servoCtx, {
         type: 'line',
         data: {
             labels: timeLabels,
@@ -58,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     label: 'Azimuth (Horizontal)',
                     data: azimuthData,
                     borderColor: '#00f3ff', // neon cyan
-                    backgroundColor: 'rgba(0, 243, 255, 0.1)',
+                    backgroundColor: 'rgba(0, 243, 255, 0.05)',
                     borderWidth: 2,
                     tension: 0.4,
                     fill: true
@@ -67,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     label: 'Elevation (Vertical)',
                     data: elevationData,
                     borderColor: '#ffb703', // amber
-                    backgroundColor: 'rgba(255, 183, 3, 0.1)',
+                    backgroundColor: 'rgba(255, 183, 3, 0.05)',
                     borderWidth: 2,
                     tension: 0.4,
                     fill: true
@@ -78,22 +76,38 @@ document.addEventListener("DOMContentLoaded", () => {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: {
-                    grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { color: '#94a3b8' }
-                },
-                y: {
-                    min: 0,
-                    max: 180,
-                    grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { color: '#94a3b8' }
-                }
+                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                y: { min: 0, max: 180, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Degrees', color: '#94a3b8' } }
             },
-            plugins: {
-                legend: {
-                    labels: { color: '#e2e8f0', font: { family: 'Inter' } }
+            plugins: { legend: { labels: { color: '#e2e8f0', font: { family: 'Inter' } } } }
+        }
+    });
+
+    // Panel Voltage History Chart
+    const voltageChart = new Chart(voltageCtx, {
+        type: 'line',
+        data: {
+            labels: timeLabels,
+            datasets: [
+                {
+                    label: 'Voltage (V)',
+                    data: voltageData,
+                    borderColor: '#a855f7', // purple
+                    backgroundColor: 'rgba(168, 85, 247, 0.05)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true
                 }
-            }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                y: { min: 0, max: 6, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#a855f7' }, title: { display: true, text: 'Voltage (V)', color: '#a855f7' } }
+            },
+            plugins: { legend: { labels: { color: '#e2e8f0', font: { family: 'Inter' } } } }
         }
     });
 
@@ -134,18 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
         vertGaugeFill.style.transform = `rotate(${verticalServo}deg)`;
         vertText.textContent = Math.round(verticalServo);
 
-        // LDRs
-        ldrTL.style.width = `${ldrValues.tl}%`;
-        ldrTLText.textContent = `${Math.round(ldrValues.tl)}%`;
 
-        ldrTR.style.width = `${ldrValues.tr}%`;
-        ldrTRText.textContent = `${Math.round(ldrValues.tr)}%`;
-
-        ldrBL.style.width = `${ldrValues.bl}%`;
-        ldrBLText.textContent = `${Math.round(ldrValues.bl)}%`;
-
-        ldrBR.style.width = `${ldrValues.br}%`;
-        ldrBRText.textContent = `${Math.round(ldrValues.br)}%`;
 
         // Direction Status
         directionDisplay.textContent = stateMachine;
@@ -175,20 +178,74 @@ document.addEventListener("DOMContentLoaded", () => {
         if (stateMachine.includes('RIGHT')) arrowRight.classList.add('active');
     }
 
-    // --- Firebase Realtime Database Integration ---
-    if (!CONFIG.FIREBASE_CONFIG || !CONFIG.FIREBASE_CONFIG.apiKey) {
-        console.error("Firebase config is missing in config.js!");
-        networkStatusDisplay.textContent = 'Missing Firebase Config';
-        return;
+
+
+    // Helper: Shared telemetry processor for both Firebase and IP fetches
+    function handleTelemetryData(data) {
+        if (!data) return;
+
+        const rawH = data.h !== undefined ? data.h : (data.hAngle !== undefined ? data.hAngle : horizontalServo);
+        const rawV = data.v !== undefined ? data.v : (data.vAngle !== undefined ? data.vAngle : verticalServo);
+        // Clamp to valid servo ranges — guards against corrupted Firebase values
+        horizontalServo = Math.min(180, Math.max(0, parseFloat(rawH) || 90));
+        verticalServo = Math.min(150, Math.max(20, parseFloat(rawV) || 45));
+        azimuthAngle = horizontalServo;
+        stateMachine = data.status || 'STATIONARY';
+
+        ldrValues.tl = data.ldrTL !== undefined ? (data.ldrTL / 1024) * 100 : ldrValues.tl;
+        ldrValues.tr = data.ldrTR !== undefined ? (data.ldrTR / 1024) * 100 : ldrValues.tr;
+        ldrValues.bl = data.ldrBL !== undefined ? (data.ldrBL / 1024) * 100 : ldrValues.bl;
+        ldrValues.br = data.ldrBR !== undefined ? (data.ldrBR / 1024) * 100 : ldrValues.br;
+
+        let averageLdrPercent = (ldrValues.tl + ldrValues.tr + ldrValues.bl + ldrValues.br) / 4;
+        let efficiency = Math.min(100, Math.max(0, averageLdrPercent));
+        powerEfficiencyDisplay.textContent = `${efficiency.toFixed(1)}%`;
+
+        if (data.voltage !== undefined) {
+            const voltageV = parseFloat(data.voltage);          // Volts from sensor
+            const voltageMV = (voltageV * 1000).toFixed(0);     // Convert V → mV
+            const ASSUMED_CURRENT_A = 0.5;                       // Assumed panel current
+            const powerW = (voltageV * ASSUMED_CURRENT_A).toFixed(2); // P = V × I
+
+            panelVoltageDisplay.textContent = `${voltageV.toFixed(2)} V`;
+
+            const mvElem = document.getElementById('power-mv');
+            const vElem = document.getElementById('power-volts');
+            const wElem = document.getElementById('power-estimate');
+            const fElem = document.getElementById('power-formula');
+
+            if (mvElem) mvElem.textContent = `${voltageMV} mV`;
+            if (vElem) vElem.textContent = `${voltageV.toFixed(2)} V`;
+            if (wElem) wElem.textContent = `${powerW} W`;
+            if (fElem) fElem.textContent =
+                `Input: ${voltageMV} mV (millivolts) → ${voltageV.toFixed(2)} V × 0.5 A = ${powerW} W`;
+        }
+
+        if (!manualToggle.checked) {
+            hSlider.value = horizontalServo;
+            vSlider.value = verticalServo;
+            hSliderValText.textContent = `${Math.round(horizontalServo)}°`;
+            vSliderValText.textContent = `${Math.round(verticalServo)}°`;
+        }
+
+        // Chart arrays are updated by the 2-second ticker (see setInterval below)
+        // This avoids double-plotting when Firebase fires and the ticker fires simultaneously
+        updateUI();
+
+        const lastCheckDisplay = document.getElementById('last-online-check');
+        if (lastCheckDisplay) lastCheckDisplay.textContent = new Date().toLocaleTimeString();
     }
 
+
+
+    // --- Firebase Realtime Database Integration ---
     const app = initializeApp(CONFIG.FIREBASE_CONFIG);
     const db = getDatabase(app);
     const dataRef = ref(db, 'solar_tracker/data');
     const controlsRef = ref(db, 'solar_tracker/controls');
+    const historyRef = ref(db, 'solar_tracker/history'); // Persistent history in Firebase
     const connectedRef = ref(db, '.info/connected');
 
-    // Display cloud connection status instantly
     onValue(connectedRef, (snap) => {
         if (snap.val() === true) {
             networkStatusDisplay.textContent = `Connected (Firebase Cloud)`;
@@ -205,53 +262,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Listen to real-time telemetry output from ESP8266
     onValue(dataRef, (snapshot) => {
         const data = snapshot.val();
-        if (!data) return;
-
-        console.log("Live Firebase Data Received:", data);
-
-        horizontalServo = data.h !== undefined ? data.h : (data.hAngle !== undefined ? data.hAngle : horizontalServo);
-        verticalServo = data.v !== undefined ? data.v : (data.vAngle !== undefined ? data.vAngle : verticalServo);
-        azimuthAngle = horizontalServo;
-        stateMachine = data.status || 'STATIONARY';
-
-        ldrValues.tl = data.ldrTL !== undefined ? (data.ldrTL / 1024) * 100 : ldrValues.tl;
-        ldrValues.tr = data.ldrTR !== undefined ? (data.ldrTR / 1024) * 100 : ldrValues.tr;
-        ldrValues.bl = data.ldrBL !== undefined ? (data.ldrBL / 1024) * 100 : ldrValues.bl;
-        ldrValues.br = data.ldrBR !== undefined ? (data.ldrBR / 1024) * 100 : ldrValues.br;
-
-        let averageLdrPercent = (ldrValues.tl + ldrValues.tr + ldrValues.bl + ldrValues.br) / 4;
-        let efficiency = Math.min(100, Math.max(0, averageLdrPercent));
-        powerEfficiencyDisplay.textContent = `${efficiency.toFixed(1)}%`;
-
-        // If in auto mode, update sliders seamlessly 
-        if (!manualToggle.checked) {
-            hSlider.value = horizontalServo;
-            vSlider.value = verticalServo;
-            hSliderValText.textContent = `${Math.round(horizontalServo)}°`;
-            vSliderValText.textContent = `${Math.round(verticalServo)}°`;
-        }
-
-        const now = new Date();
-        timeLabels.push(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`);
-        azimuthData.push(horizontalServo);
-        elevationData.push(verticalServo);
-
-        if (timeLabels.length > 30) {
-            timeLabels.shift();
-            azimuthData.shift();
-            elevationData.shift();
-        }
-        historyChart.update();
-        updateUI();
-
-        const lastCheckDisplay = document.getElementById('last-online-check');
-        if (lastCheckDisplay) lastCheckDisplay.textContent = new Date().toLocaleTimeString();
+        if (data) handleTelemetryData(data);
     });
 
-    // Listen to controls from Cloud (keeps multiple user dashboards in sync globally)
     onValue(controlsRef, (snapshot) => {
         const controls = snapshot.val();
         if (!controls) return;
@@ -263,59 +278,78 @@ document.addEventListener("DOMContentLoaded", () => {
                     manualSlidersDiv.classList.remove('disabled-ui');
                     hSlider.disabled = false;
                     vSlider.disabled = false;
-                    sendBtn.disabled = false;
                     trackerModeDisplay.textContent = 'MANUAL';
                     trackerModeDisplay.style.color = 'var(--amber-main)';
+                    btnManual.classList.add('active');
+                    btnAuto.classList.remove('active');
                 } else {
                     manualSlidersDiv.classList.add('disabled-ui');
                     hSlider.disabled = true;
                     vSlider.disabled = true;
-                    sendBtn.disabled = true;
                     trackerModeDisplay.textContent = 'AUTO';
                     trackerModeDisplay.style.color = 'var(--neon-cyan-main)';
+                    btnAuto.classList.add('active');
+                    btnManual.classList.remove('active');
                 }
             }
         }
     });
 
-    // Event Listeners - Push User Inputs directly to Firebase Global Controls Room
+    // Button Listeners for mode switching
+    btnAuto.addEventListener('click', () => {
+        manualToggle.checked = false;
+        manualToggle.dispatchEvent(new Event('change'));
+    });
+
+    btnManual.addEventListener('click', () => {
+        manualToggle.checked = true;
+        manualToggle.dispatchEvent(new Event('change'));
+    });
+
+    // Event Listeners - Push User Inputs directly to Firebase OR Local IP
     manualToggle.addEventListener('change', (e) => {
         const isManual = e.target.checked;
         if (isManual) {
             manualSlidersDiv.classList.remove('disabled-ui');
             hSlider.disabled = false;
             vSlider.disabled = false;
-            sendBtn.disabled = false;
             trackerModeDisplay.textContent = 'MANUAL';
             trackerModeDisplay.style.color = 'var(--amber-main)';
+            btnManual.classList.add('active');
+            btnAuto.classList.remove('active');
             update(controlsRef, { manualMode: true });
         } else {
             manualSlidersDiv.classList.add('disabled-ui');
             hSlider.disabled = true;
             vSlider.disabled = true;
-            sendBtn.disabled = true;
             trackerModeDisplay.textContent = 'AUTO';
             trackerModeDisplay.style.color = 'var(--neon-cyan-main)';
-            update(controlsRef, { manualMode: false });
+            btnAuto.classList.add('active');
+            btnManual.classList.remove('active');
+            // Clear stale manual target — prevents ESP8266 picking up old 180° on reboot
+            update(controlsRef, { manualMode: false, targetH: 90, targetV: 45 });
+            hSlider.value = 90;
+            vSlider.value = 45;
+            hSliderValText.textContent = '90°';
+            vSliderValText.textContent = '45°';
         }
     });
 
     hSlider.addEventListener('input', () => {
-        hSliderValText.textContent = `${hSlider.value}°`;
-        update(controlsRef, { targetH: parseInt(hSlider.value) });
+        const val = parseInt(hSlider.value);
+        hSliderValText.textContent = `${val}°`;
+        horizontalServo = val;   // update gauge immediately
+        azimuthAngle = val;
+        updateUI();
+        update(controlsRef, { targetH: val });
     });
 
     vSlider.addEventListener('input', () => {
-        vSliderValText.textContent = `${vSlider.value}°`;
-        update(controlsRef, { targetV: parseInt(vSlider.value) });
-    });
-
-    sendBtn.addEventListener('click', () => {
-        update(controlsRef, {
-            targetH: parseInt(hSlider.value),
-            targetV: parseInt(vSlider.value),
-            forceTrigger: Date.now()
-        });
+        const val = parseInt(vSlider.value);
+        vSliderValText.textContent = `${val}°`;
+        verticalServo = val;     // update gauge immediately
+        updateUI();
+        update(controlsRef, { targetV: val });
     });
 
     // Weather Integration
@@ -378,44 +412,135 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            // Power Output Estimation
-            // Let's assume a baseline 100W panel capacity for this example project
-            const MAX_POWER_W = 100;
-            const cloudCover = currentData.clouds ? currentData.clouds.all : 0; // percentage
-            const timeNow = new Date().getHours();
-
-            // Basic solar radiation curve by hour (peak at 12pm)
-            // Starts rising at 6am, peaks at 12pm, sets at 6pm
-            let sunAngleFactor = 0;
-            if (timeNow >= 6 && timeNow <= 18) {
-                // Sine wave curve from 0 to Pi between 6am and 6pm
-                sunAngleFactor = Math.sin(((timeNow - 6) / 12) * Math.PI);
-            }
-
-            // Cloud cover reduces efficiency by its percentage
-            const cloudFactor = 1 - (cloudCover / 100);
-
-            // Calculate final estimate
-            const estimatedPower = Math.round(MAX_POWER_W * sunAngleFactor * cloudFactor);
-
-            const powerEstimateElem = document.getElementById('power-estimate');
-            if (powerEstimateElem) {
-                powerEstimateElem.textContent = `${estimatedPower} W`;
-            }
-
-            const powerFormulaElem = document.getElementById('power-formula');
-            if (powerFormulaElem) {
-                powerFormulaElem.textContent = `Formula: Max (100W) × Sun Angle (~${(sunAngleFactor * 100).toFixed(0)}%) × Sky Clarity (${(cloudFactor * 100).toFixed(0)}%)`;
-            }
+            // Weather still shown in the forecast; power card now uses real voltage data
 
         } catch (error) {
             console.error("Failed to fetch weather data: ", error);
         }
     }
 
-    // Loops
+    // --- History Storage: Firebase RTDB (keys stay in config.js only) ---
+    // Note: CONFIG.FIREBASE_CONFIG is loaded from config.js — keys are never hardcoded here.
+
+    function logHistory() {
+        const voltRaw = panelVoltageDisplay ? panelVoltageDisplay.textContent : '0 V';
+        const entry = {
+            t: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            ts: Date.now(),   // Unix timestamp for ordering
+            h: Math.round(horizontalServo),
+            v: Math.round(verticalServo),
+            vol: parseFloat(voltRaw) || 0
+        };
+        // Push to Firebase — persists across browser sessions and devices
+        push(historyRef, entry).catch(err => console.warn('History log failed:', err));
+    }
+
+    const historyModal = document.getElementById('history-modal');
+    const viewHistoryBtn = document.getElementById('view-history-btn');
+    const closeModalBtn = document.getElementById('close-modal');
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+
+    let pastServoChartInstance = null;
+    let pastVoltageChartInstance = null;
+
+    function renderPastHistory() {
+        if (!historyModal.classList.contains('active')) return;
+
+        if (pastServoChartInstance) pastServoChartInstance.destroy();
+        if (pastVoltageChartInstance) pastVoltageChartInstance.destroy();
+
+        // Load history from Firebase (read once)
+        get(historyRef).then(snapshot => {
+            const raw = snapshot.val();
+            const entries = raw ? Object.values(raw).sort((a, b) => (a.ts || 0) - (b.ts || 0)) : [];
+
+            // Trim to last 200 entries
+            const recent = entries.slice(-200);
+            const labels = recent.map(d => d.t);
+            const hData = recent.map(d => d.h);
+            const vData = recent.map(d => d.v);
+            const volData = recent.map(d => d.vol);
+
+            // Servo chart
+            pastServoChartInstance = new Chart(document.getElementById('pastServoChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Azimuth', data: hData, borderColor: '#00f3ff', tension: 0.3 },
+                        { label: 'Elevation', data: vData, borderColor: '#ffb703', tension: 0.3 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { min: 0, max: 180, ticks: { color: '#94a3b8' } } }
+                }
+            });
+
+            // Voltage chart
+            pastVoltageChartInstance = new Chart(document.getElementById('pastVoltageChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{ label: 'Voltage (V)', data: volData, borderColor: '#a855f7', tension: 0.3 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { min: 0, max: 6, ticks: { color: '#a855f7' } } }
+                }
+            });
+        }).catch(err => {
+            console.error('Failed to load history from Firebase:', err);
+        });
+    }
+
+    viewHistoryBtn.addEventListener('click', () => {
+        historyModal.classList.add('active');
+        renderPastHistory();
+    });
+
+    closeModalBtn.addEventListener('click', () => historyModal.classList.remove('active'));
+
+    clearHistoryBtn.addEventListener('click', () => {
+        if (confirm('Clear ALL history from the database?')) {
+            remove(historyRef)
+                .then(() => {
+                    if (pastServoChartInstance) pastServoChartInstance.destroy();
+                    if (pastVoltageChartInstance) pastVoltageChartInstance.destroy();
+                    historyModal.classList.remove('active');
+                })
+                .catch(err => console.error('Failed to clear history:', err));
+        }
+    });
+
+    // Loops & Init
     setInterval(updateUptime, 1000);
-    setInterval(fetchWeatherData, 600000); // 10 minutes
-    updateUI(); // Init
-    fetchWeatherData(); // Init weather
+    setInterval(fetchWeatherData, 3600000); // Hourly weather
+    setInterval(logHistory, 300000); // Log history every 5 minutes
+
+    // Continuous chart ticker — pushes a point every 2s using last known values
+    // This makes graphs scroll in real time even when Firebase data is unchanged
+    setInterval(() => {
+        const now = new Date();
+        const label = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+        timeLabels.push(label);
+        azimuthData.push(horizontalServo);
+        elevationData.push(verticalServo);
+        // Read latest voltage from the display element so chart stays in sync
+        const rawVol = panelVoltageDisplay ? parseFloat(panelVoltageDisplay.textContent) : 0;
+        voltageData.push(isNaN(rawVol) ? 0 : rawVol);
+
+        if (timeLabels.length > 30) {
+            timeLabels.shift();
+            azimuthData.shift();
+            elevationData.shift();
+            voltageData.shift();
+        }
+        servoChart.update('none'); // 'none' = skip animation for smooth scrolling
+        voltageChart.update('none');
+    }, 2000);
+
+    updateUI();
+    fetchWeatherData();
+    logHistory(); // First log immediately
 });

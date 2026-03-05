@@ -1,52 +1,76 @@
 # Dual-Axis Solar Monitoring System
 
-A responsive web dashboard designed to track and monitor a dual-axis solar tracking system connected to an ESP32. This interface visualizes real-time telemetry data including tracking history plots, manual override capabilities, sun position rendering, servo azimuth/elevation status, and SP (solar panel) signals tracking.
+A responsive web dashboard designed to track and monitor a dual-axis solar tracking system connected to an **ESP8266 NodeMCU**. The interface provides real-time telemetry — including live servo angles, panel voltage, motor control, weather integration, and historical performance graphs — all synchronized through **Firebase Realtime Database**.
 
 ## Table of Contents
-- [Dual-Axis Solar Monitoring System](#dual-axis-solar-monitoring-system)
-  - [Recent Features Added](#recent-features-added)
-  - [Getting Started](#getting-started)
-  - [Data Architecture & Calculations](#data-architecture--calculations)
-    - [Live Angle Rendering](#live-angle-rendering)
-    - [Estimated Power Generation Math](#estimated-power-generation-math)
-  - [Technologies Used](#technologies-used)
+- [Recent Updates (2026-03-06)](#recent-updates-2026-03-06)
+- [Getting Started](#getting-started)
+- [Dashboard Features](#dashboard-features)
+- [Data Architecture & Calculations](#data-architecture--calculations)
+  - [Live Angle Rendering](#live-angle-rendering)
+  - [Real-Time Power Output Formula](#real-time-power-output-formula)
+  - [History Logging to Firebase](#history-logging-to-firebase)
+- [Security & Key Management](#security--key-management)
+- [Technologies Used](#technologies-used)
 - [ESP8266 Dual-Axis Solar Tracker](#esp8266-dual-axis-solar-tracker)
   - [1. System Architecture](#1-system-architecture)
   - [2. Required Components](#2-required-components)
   - [3. Component Connections & Pin Configuration](#3-component-connections--pin-configuration)
-    - [Input: LDR Modules (Digital)](#input-ldr-modules-digital)
-    - [Output: Servo Motors](#output-servo-motors)
   - [4. Circuit Schematic Notes](#4-circuit-schematic-notes)
   - [5. Software Features](#5-software-features)
-    - [A. The Web Dashboard](#a-the-web-dashboard)
-    - [B. Code Logic Breakdown](#b-code-logic-breakdown)
-      - [1. The Sensor Configuration](#1-the-sensor-configuration)
-      - [2. The "Darkness" & Home Logic](#2-the-darkness--home-logic)
-      - [3. Movement Logic (The "Brain")](#3-movement-logic-the-brain)
-      - [4. Smooth Return Function](#4-smooth-return-function)
-      - [Potential Issues to Watch For](#potential-issues-to-watch-for)
   - [6. Calibration Procedure](#6-calibration-procedure)
   - [7. Maintenance & Safety](#7-maintenance--safety)
   - [8. Source Code](#8-source-code)
   - [9. Website Structure & Data Flow](#9-website-structure--data-flow)
-    - [A. Project Structure](#a-project-structure)
-    - [B. End-to-End Data Flow (Telemetry & Automation)](#b-end-to-end-data-flow-telemetry--automation)
-      - [1. Telemetry Generation (ESP8266 -> Database)](#1-telemetry-generation-esp8266---database)
-      - [2. Telemetry Visualization (Database -> Web Dashboard)](#2-telemetry-visualization-database---web-dashboard)
-      - [3. Manual Override Controls (Dashboard -> Database)](#3-manual-override-controls-dashboard---database)
-      - [4. Physical Actuation (Database -> ESP8266)](#4-physical-actuation-database---esp8266)
 
-## Recent Features Added
+---
 
-We've recently implemented significant enhancements to the solar tracker:
+## Recent Updates (2026-03-06)
 
-* **Dynamic ESP32 Connection:** Added a live configuration panel to the dashboard header, allowing you to manually input the target IP address and connect without modifying code. (Requests are made to the `/data` endpoint).
-* **Continuous Online Verification:** Now features a consistent "Online Check" status timestamp under Daily Statistics to confirm active data polling.
-* **SP Signals Section:** Updated the dashboard to accurately reflect "SP Signals" tracking directly.
-* **Live Weather Integration:** Integrated real-time local weather observations for Vijayawada, as well as a 5-interval hourly forecast using the OpenWeatherMap API, styled naturally to fit the dashboard's glassy neon aesthetic.
-* **API Error Handling:** If the Weather API key is disabled, inactive, or unauthorized (401 error), the dashboard gracefully displays an error notification instead of failing silently.
-* **Live Estimated Power Generation:** Dynamically calculates an estimated current power output (using a baseline 100W maximum capacity) based on current local solar radiation angles and the exact percentage of live cloud cover pulled from the weather API. The math formula output is explicitly presented in the dashboard under the estimate.
-* **Responsive Layout Design:** Updated CSS media queries to properly wrap and stack the weather and power estimation cards on smaller mobile and tablet displays without breaking the grid structure.
+All features built in today's session:
+
+### 🎛️ Unified Servomotor Control Card
+- **Merged** the previous separate "Servo Positions" and "Manual Override" panels into a single **"Servomotor Control"** card.
+- Added a sleek **Auto / Manual mode switcher** button pair replacing the old toggle switch:
+  - **Auto** (Neon Cyan) → ESP8266 controls servos via LDR sensors automatically.
+  - **Manual** (Amber) → Dashboard sliders take full control of both axes.
+- Sliders now **instantly update the gauges** in real time as you drag them (no waiting for Firebase echo).
+- Servo angles are now **clamped** (H: 0–180°, V: 20–150°) to guard against corrupted Firebase values (e.g., the `-16209°` bug is fixed).
+
+### 📊 Separate Graphs for Angles and Voltage
+- Split the combined dual-axis chart into **two independent graphs**:
+  - **Motor Response History (Degrees)** — tracks Azimuth (cyan) and Elevation (amber) over time.
+  - **Panel Performance History (Voltage)** — tracks panel voltage (purple) over time.
+- Both graphs are displayed **side by side**, spanning the full page width.
+- Each graph has its own correctly scaled Y-axis (0–180° and 0–6V respectively).
+
+### ⚡ Real-Time Power Output Card (Voltage-Based)
+- Replaced the weather-estimate-only power card with a **3-row real sensor reading display**:
+  - 📡 **Sensor Input** — raw reading converted to **millivolts (mV)** for easy understanding.
+  - ⚡ **Panel Voltage** — the same value displayed in **Volts (V)**.
+  - 🔋 **Estimated Output** — calculated in **Watts (W)** using `P = V × I`.
+- Formula displayed inline: `Input: X mV → Y V × 0.5 A (assumed) = Z W`.
+- > **Note:** 0.5A is an assumed constant because the circuit has no current sensor (INA219/ACS712). To get a truly accurate wattage, add a current sensor to the ESP8266 circuit and publish `current` alongside `voltage` to Firebase.
+
+### 🗄️ Persistent History in Firebase (Replaces localStorage)
+- History is now stored in **Firebase Realtime Database** at `solar_tracker/history/` instead of `localStorage`.
+- A new snapshot `{ timestamp, h, v, vol }` is `push()`-ed to Firebase **every 5 minutes**.
+- The **"View Past Data"** modal reads directly from Firebase with `get()`, sorts by Unix timestamp, and renders the last 200 entries.
+- History is truly **persistent** — survives browser cache clears, device changes, and power cycles.
+- **"Clear History"** calls `remove()` on the Firebase node to wipe the database cleanly.
+
+### 🔐 Security Improvements
+- All Firebase and Weather API keys are stored **exclusively in `config.js`** and `.env`.
+- `config.js` and `.env` are now listed in **`.gitignore`** to prevent accidental key exposure in public Git repositories.
+- ESP8266 firmware (`esp8266_tracker.ino`) now uses **placeholder strings** (`YOUR_WIFI_SSID`, etc.) — the real values are recorded only in `.env`.
+
+### 🛠️ Bug Fixes
+- Fixed a **dashboard crash** caused by a stale reference to a removed `historyChart` canvas element (left over when splitting charts). All timers, weather, and Firebase listeners now initialize correctly.
+- Fixed **slider → gauge sync**: adjusting a slider in Manual mode now instantly moves the on-screen gauge without waiting for a Firebase round-trip.
+- Fixed **ghost voltage readings**: when the solar panel is disconnected, the A0 pin floats and generates noise. A software noise floor now forces readings below ~0.05V to exactly 0.00V.
+- Fixed **corrupted angle display** (`-16209°`) by adding range-clamping on all servo values read from Firebase.
+
+
 
 ## Getting Started
 
@@ -60,26 +84,66 @@ Because this application relies exclusively on frontend code (HTML, CSS, JavaScr
 
 ## Data Architecture & Calculations
 
-The frontend dashboard serves as a visualizing GUI for the ESP32 hardware and dynamically computes specific analytics:
+The frontend dashboard is a fully live GUI synchronized with Firebase Realtime Database:
 
 ### Live Angle Rendering
-- The system aggressively polls the ESP32 `/data` endpoint every 1000ms.
-- **Payload Expectation:** The dashboard anticipates receiving a JSON payload containing exactly these values from the ESP32 representing the physical angles: `{"hAngle": 90, "vAngle": 45}`.
-- **Azimuth Visualization (Horizontal Angle):** The `hAngle` received is bound between 0° and 180°. It dynamically rotates the SVG Compass graphic at the center of the screen via CSS transforms (`rotate(angle - 90)deg`), effectively serving as a real-time tracking compass relative to a fixed zero point.
-- **Elevation Visualization (Vertical Angle):** The `vAngle` runs linearly from 0° (flat horizontally) to 180°. The corresponding vertical gauge explicitly masks a CSS conic-gradient loop to show the immediate tilt.
+- The ESP8266 publishes to Firebase every 500ms; the dashboard uses `onValue()` to listen for changes — no polling required.
+- **Firebase Payload:** `{ h, v, ldrTL, ldrTR, ldrBL, ldrBR, status, voltage }`
+- **Azimuth (Horizontal):** `h` is clamped 0°–180° and rotates the SVG compass needle via `rotate(h - 90)deg`.
+- **Elevation (Vertical):** `v` is clamped 20°–150° and drives the vertical gauge arc fill.
+- Both values also feed the **Motor Response History** chart in real time.
 
-### Estimated Power Generation Math
-The Estimated Power Generation card uses a hybrid system combining the baseline hardware knowledge with live external weather variables from OpenWeatherMap to calculate instantaneous panel output:
-1.  **Baseline Capacity:** Currently fixed at a theoretical maximum `100W` base capacity for a typical small residential/hobby tracking panel setup.
-2.  **Solar Angle Coefficient (Time Factor):** Calculates a simple diurnal solar radiation curve between 6:00 AM and 6:00 PM using a trigonometric sine wave (`Math.sin(((timeNow - 6) / 12) * Math.PI)`). Early morning and late evening generate minimal wattage (nearing 0%), while precisely 12:00 PM generates optimal zenith light (100% capacity). Outside 6 AM - 6 PM, it evaluates to 0. 
-3.  **Atmospheric Clarity (Cloud Factor):** Ingests the live cloud cover percentage directly pulled from the OpenWeather JSON (`clouds.all`) and inverts it into a clarity score (`1 - (cloudCover / 100)`). A completely cloudy sky significantly throttles power, while clear skies maximize efficiency.
-4.  **Final Output Equation:** `Output (W) = 100W × Solar Angle Coefficient × Atmospheric Clarity Score`. This breakdown is displayed live alongside the generated wattage value inside the dashboard's interface.
+### Real-Time Power Output Formula
+
+The power card uses the **actual sensor voltage**, not a weather estimate:
+
+```
+Power (W) = Voltage (V) × Assumed Current (A)
+```
+
+| Step | Value | Source |
+|------|-------|--------|
+| Sensor Input | millivolts (mV) | ESP8266 A0 pin → Firebase |
+| Panel Voltage | Volts (V) | mV ÷ 1000 |
+| Assumed Current | **0.5 A** | Hardcoded — no current sensor fitted |
+| **Power Output** | **Watts (W)** | V × 0.5A |
+
+> **⚠️ Limitation:** Without a hardware current sensor (INA219 or ACS712), the 0.5A figure is an approximation. The voltage reading is accurate; the watts are estimated.
+
+### History Logging to Firebase
+
+Every 5 minutes, `logHistory()` calls `push(historyRef, entry)` to store:
+
+```json
+{
+  "t": "12:30",
+  "ts": 1741200600000,
+  "h": 90,
+  "v": 45,
+  "vol": 1.75
+}
+```
+
+The **"View Past Data"** modal fetches all records with `get(historyRef)`, sorts them by `ts`, and renders two separate charts for servo movement and panel voltage history.
+
+## Security & Key Management
+
+| Location | Contains | Git Status |
+|----------|----------|------------|
+| `.env` | WiFi SSID/Password, Firebase Auth, Weather API Key | ✅ Gitignored |
+| `config.js` | Firebase Config object, Weather API Key | ✅ Gitignored |
+| `script.js` | Reads from `CONFIG.*` only — **no hardcoded keys** | 🟢 Safe to commit |
+| `esp8266_tracker.ino` | Placeholder strings (`YOUR_WIFI_SSID`) | 🟢 Safe to commit |
 
 ## Technologies Used
-- HTML5 / CSS3 (Grid, Flexbox, Custom Glassmorphism Theme)
-- Vanilla DOM JavaScript
-- [Chart.js](https://www.chartjs.org/) for history rendering
-- OpenWeatherMap API
+- **HTML5 / CSS3** — Grid, Flexbox, Glassmorphism theme
+- **Vanilla JavaScript** — No frameworks, ES modules
+- **[Chart.js](https://www.chartjs.org/)** — Two real-time + two history charts
+- **Firebase Realtime Database** — Live telemetry sync + persistent history storage
+- **OpenWeatherMap API** — Live weather & 3-hour forecast for Vijayawada
+- **ESP8266 NodeMCU** — Microcontroller running solar tracking firmware
+
+
 
 # ESP8266 Dual-Axis Solar Tracker
 

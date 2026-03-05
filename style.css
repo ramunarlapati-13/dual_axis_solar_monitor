@@ -39,7 +39,11 @@ body {
     line-height: 1.5;
     min-height: 100vh;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    /* Stack dashboard + footer vertically */
+    align-items: center;
+    /* Keep everything centred horizontally */
+    justify-content: flex-start;
     padding: 2rem;
     overflow-x: hidden;
 }
@@ -211,7 +215,7 @@ h2 {
 
 /* Central Card (Compass) */
 .central-card {
-    grid-column: span 5;
+    grid-column: span 6;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -303,7 +307,7 @@ h2 {
 
 /* Gauges Card */
 .gauges-card {
-    grid-column: span 3;
+    grid-column: span 6;
     display: flex;
     flex-direction: column;
 }
@@ -578,25 +582,50 @@ h2 {
     margin-top: 1rem;
 }
 
+/* Mode Switcher Buttons */
+.mode-switch-group {
+    display: flex;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    border-radius: 12px;
+    border: 1px solid var(--panel-border);
+}
+
+.mode-btn {
+    padding: 6px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.mode-btn.active {
+    background: var(--neon-cyan-main);
+    color: var(--bg-dark);
+    box-shadow: 0 0 15px var(--neon-cyan-glow);
+}
+
+.mode-btn#btn-manual.active {
+    background: var(--amber-main);
+    box-shadow: 0 0 15px var(--amber-glow);
+}
+
+/* Manual Control Card */
+.manual-control-card {
+    grid-column: span 12;
+    margin-top: 1rem;
+}
+
 .header-with-toggle {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
-}
-
-/* Toggle Switch Styles */
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 60px;
-    height: 30px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
 }
 
 .toggle-slider {
@@ -908,4 +937,123 @@ input[type="range"]::-webkit-slider-thumb {
     .sidebar-layout {
         grid-column: span 12;
     }
+}
+
+/* Modal & History Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.modal-content {
+    width: 100%;
+    max-width: 1100px;
+    height: 80vh;
+    display: flex !important;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.history-chart-container {
+    flex-grow: 1;
+    min-height: 0;
+    width: 100%;
+    position: relative;
+}
+
+.history-controls {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.modal.active {
+    display: flex !important;
+}
+
+/* Side-by-side charts row — full grid width */
+.charts-row {
+    display: flex;
+    gap: 1.5rem;
+    width: 100%;
+    grid-column: 1 / -1;
+    /* span ALL 12 columns */
+}
+
+.charts-row .chart-card {
+    flex: 1;
+    min-width: 0;
+    /* prevent flex children from overflowing */
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* ==============================
+   FOOTER
+   ============================== */
+footer.site-footer {
+    width: 100%;
+    max-width: 1280px;
+    /* matches .dashboard max-width */
+    margin: 1rem auto 0;
+    padding: 1.2rem 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+footer.site-footer a {
+    color: var(--neon-cyan-main);
+    text-decoration: none;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+
+footer.site-footer a:hover {
+    opacity: 0.75;
+    text-decoration: underline;
+}
+
+footer.site-footer .footer-divider {
+    color: rgba(255, 255, 255, 0.2);
+}
+
+footer.site-footer .github-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+footer.site-footer .github-icon:hover {
+    color: var(--neon-cyan-main);
+    text-decoration: none;
 }
