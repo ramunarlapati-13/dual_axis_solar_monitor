@@ -31,11 +31,11 @@ Servo vertical;
 // ==========================================
 // Current Positions
 int posH = 90; 
-int posV = 45;
+int posV = 90;
 
 // Home Positions
 const int homeH = 90;
-const int homeV = 45;
+const int homeV = 90;
 
 unsigned long darkStartTime = 0;
 bool isHome = false;
