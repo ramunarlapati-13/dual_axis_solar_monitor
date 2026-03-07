@@ -17,6 +17,8 @@ To build this project, follow the wiring schematic below. The ESP8266 acts as th
 
 ![Connection Diagram](images/solar-tracker-diagram.png)
 
+<p style="color: #ff3333; font-weight: bold;">⚠️ IMPORTANT: Use a separate 5V power supply for the servo motors. This is very important to prevent system resets and ensure stable operation!</p>
+
 ### Pin Mapping Table
 | Component | ESP8266 Pin | NodeMCU Label | Function |
 | :--- | :--- | :--- | :--- |
