@@ -527,3 +527,23 @@ The system relies on Firebase as the central "Source of Truth" to synchronize st
 - **Validation:** It reads whether `manualMode` is activated.
 - **Motor Control:** If `true`, the ESP8266 temporarily ignores the hardware light sensors and uses a smooth-step loop (`if (hAngle < targetH) hAngle++;`) into the target angles supplied from the web slider.
 - **Feedback Loop:** As the physical servos move, the ESP8266 pushes its new mechanical angles back to `/solar_tracker/data` (Step 1), instantly updating the user's dashboard (Step 2) to confirm successful manual execution.
+
+---
+
+## 🚀 Vercel Deployment
+
+To deploy this dashboard to Vercel and keep your API keys secure:
+
+1. **Environment Variables**: In your Vercel Project Settings, add the following variables:
+   - `WEATHER_API_KEY`: Your OpenWeatherMap key.
+   - `CITY`: e.g., `Vijayawada`.
+   - `FIREBASE_API_KEY`: Your Firebase `apiKey`.
+   - `FIREBASE_AUTH_DOMAIN`: Your Firebase `authDomain`.
+   - `FIREBASE_PROJECT_ID`: Your Firebase `projectId`.
+   - `FIREBASE_DATABASE_URL`: Your Firebase `databaseURL`.
+   - `FIREBASE_STORAGE_BUCKET`: Your Firebase `storageBucket`.
+   - `FIREBASE_MESSAGING_SENDER_ID`: Your Firebase `messagingSenderId`.
+   - `FIREBASE_APP_ID`: Your Firebase `appId`.
+   - `FIREBASE_MEASUREMENT_ID`: Your Firebase `measurementId`.
+
+2. **Automatic Build**: The project includes a `generate-config.sh` script and a `package.json`. Vercel will automatically run `npm run build` to generate your `config.js` securely using your environment variables.
