@@ -1,6 +1,6 @@
 # Maximizing Energy: The Dual-Axis Solar Tracker with Real-Time Cloud Monitoring
 
-![Solar Tracker Hero](file:///C:/Users/ramun/.gemini/antigravity/brain/f0b4c7b9-9160-4d73-bbca-149ebe81d921/solar_tracker_hero_1772887564920.png)
+![Solar Tracker Hero](images/solar-tracker-hero.png)
 
 ## Introduction
 The search for sustainable energy efficiency has led to significant innovations in how we capture sunlight. While static solar panels are common, they lose a massive percentage of potential energy as the sun moves across the sky. This project presents a **Dual-Axis Solar Tracker** powered by the **ESP8266**, which follows the sun in real-time and streams live data to a global dashboard via **Firebase**.
@@ -15,7 +15,7 @@ At the core of the system is an ESP8266 microcontroller managing a 4-point LDR (
 ## Wiring & Connection Diagram
 To build this project, follow the wiring schematic below. The ESP8266 acts as the brain, reading digital signals from the LDR modules and controlling the PWM signals for the servos.
 
-![Connection Diagram](file:///C:/Users/ramun/.gemini/antigravity/brain/f0b4c7b9-9160-4d73-bbca-149ebe81d921/media__1772887561759.png)
+![Connection Diagram](images/solar-tracker-diagram.png)
 
 ### Pin Mapping Table
 | Component | ESP8266 Pin | NodeMCU Label | Function |
@@ -46,11 +46,9 @@ What sets this project apart is its **IoT integration**. By leveraging **Firebas
 ## Cloud Dashboard Interface
 The web interface is designed with a premium, futuristic dark-mode aesthetic, providing a comprehensive view of the tracker's health and performance.
 
-````carousel
-![Dashboard Top](file:///C:/Users/ramun/.gemini/antigravity/brain/f0b4c7b9-9160-4d73-bbca-149ebe81d921/media__1772887578867.png)
-<!-- slide -->
-![Dashboard Bottom](file:///C:/Users/ramun/.gemini/antigravity/brain/f0b4c7b9-9160-4d73-bbca-149ebe81d921/media__1772887583612.png)
-````
+![Dashboard Top](images/solar-tracker-ui-1.png)
+
+![Dashboard Bottom](images/solar-tracker-ui-2.png)
 
 ### Key Features of the UI:
 - **Real-Time Gauges**: Visual indicators for horizontal (azimuth) and vertical (elevation) angles.
