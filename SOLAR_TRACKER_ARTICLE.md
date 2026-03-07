@@ -84,4 +84,4 @@ This Dual-Axis Solar Tracker demonstrates how low-cost microcontrollers and clou
 
 *Written by Antigravity*
 *Project Repository: [GitHub](https://github.com/ramunarlapati-13/dual_axis_solar_monitor)*
-*[Read full documentation](https://dual-axis-solar-monitor.vercel.app/)*
+*[Read full documentation](https://ramublogs.vercel.app/blogs/solar-tracker-esp8266)*
