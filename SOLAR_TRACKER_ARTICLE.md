@@ -33,10 +33,22 @@ To build this project, follow the wiring schematic below. The ESP8266 acts as th
 | **Ground** | GND | G | Common Ground |
 
 ## The "Smart" Tracking Logic
-Unlike simple trackers, this system uses a "Perfect Centering" algorithm:
-1. **Differential Analysis**: The ESP8266 compares light levels between the top/bottom and left/right pairs.
-2. **Deadzone Management**: To prevent jittery motor movement, the system only moves when a significant light difference is detected.
-3. **Auto-Home Function**: When darkness is detected for more than 3 seconds (e.g., at sunset), the system automatically performs a "Smooth Return" to its 90/90 home position, waiting for the next sunrise.
+Unlike simple trackers, this system uses a **Differential Centering Algorithm** to ensure the panel is always perpendicular to the sun's rays.
+
+### Servo Movement Algorithm
+The algorithm works by comparing the state of the four LDR sensors to determine the necessary corrective movement:
+
+| Logic Phase | Condition | Resulting Action |
+| :--- | :--- | :--- |
+| **Vertical Axis** | (Top Left OR Top Right) detect light while Bottoms are dark | **Tilt UP**: Increment Vertical Servo |
+| **Vertical Axis** | (Bottom Left OR Bottom Right) detect light while Tops are dark | **Tilt DOWN**: Decrement Vertical Servo |
+| **Horizontal Axis** | (Top Left OR Bottom Left) detect light while Rights are dark | **Turn LEFT**: Decrement Horizontal Servo |
+| **Horizontal Axis** | (Top Right OR Bottom Right) detect light while Lefts are dark | **Turn RIGHT**: Increment Horizontal Servo |
+
+### Key Optimization Features:
+1. **Deadzone Management**: To prevent jittery motor movement and unnecessary "hunting," the system only triggers movement when a clear imbalance is detected.
+2. **Smooth Step-Motion**: To prevent current spikes from the servos (which could reset the ESP8266), the motors move in small, 2-degree increments with a 15ms buffer between steps.
+3. **Auto-Home Function**: When darkness is detected for more than 3 continuous seconds (sunset), the system performs a "Smooth Return" to its 90/45 home position, positioning it perfectly for the next morning's sunrise.
 
 ## Full-Stack Connectivity with Firebase
 What sets this project apart is its **IoT integration**. By leveraging **Firebase Realtime Database**, the tracker becomes accessible from anywhere in the world.
