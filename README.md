@@ -2,6 +2,8 @@
 
 A responsive web dashboard designed to track and monitor a dual-axis solar tracking system connected to an **ESP8266 NodeMCU**. The interface provides real-time telemetry — including live servo angles, panel voltage, motor control, weather integration, and historical performance graphs — all synchronized through **Firebase Realtime Database**.
 
+### 🔗 [Live Demo](https://dual-axis-solar-monitor.vercel.app/)
+
 ## Table of Contents
 - [Recent Updates (2026-03-06)](#recent-updates-2026-03-06)
 - [Getting Started](#getting-started)
