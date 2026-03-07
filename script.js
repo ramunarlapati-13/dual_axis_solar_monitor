@@ -12,8 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const vertGaugeFill = document.getElementById("vert-gauge-fill");
     const vertText = document.getElementById("vert-text");
 
-
-
     const directionDisplay = document.getElementById("direction-display");
     const arrowUp = document.querySelector(".arrow.up");
     const arrowDown = document.querySelector(".arrow.down");
@@ -123,9 +121,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Set Launch Time for Uptime
     const launchTime = Date.now();
 
-    // Map function
-    const map = (val, in_min, in_max, out_min, out_max) => (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-
     // Format Uptime
     function updateUptime() {
         const diff = Date.now() - launchTime;
@@ -147,8 +142,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         vertGaugeFill.style.transform = `rotate(${verticalServo}deg)`;
         vertText.textContent = Math.round(verticalServo);
-
-
 
         // Direction Status
         directionDisplay.textContent = stateMachine;
@@ -177,9 +170,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (stateMachine.includes('LEFT')) arrowLeft.classList.add('active');
         if (stateMachine.includes('RIGHT')) arrowRight.classList.add('active');
     }
-
-
-
     // Helper: Shared telemetry processor for both Firebase and IP fetches
     function handleTelemetryData(data) {
         if (!data) return;
@@ -235,9 +225,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const lastCheckDisplay = document.getElementById('last-online-check');
         if (lastCheckDisplay) lastCheckDisplay.textContent = new Date().toLocaleTimeString();
     }
-
-
-
     // --- Firebase Realtime Database Integration ---
     const app = initializeApp(CONFIG.FIREBASE_CONFIG);
     const db = getDatabase(app);
