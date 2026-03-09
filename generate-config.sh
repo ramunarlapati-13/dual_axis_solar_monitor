@@ -1,9 +1,17 @@
 #!/bin/bash
 
 # generate-config.sh
-# This script creates the config.js file using environment variables provided by Vercel.
+# This script creates the config.js file and prepares the public folder for Vercel.
 
-cat <<EOF > config.js
+# 1. Create the public directory
+mkdir -p public
+
+# 2. Copy static files into public
+cp index.html style.css script.js public/
+cp -r images public/
+
+# 3. Generate config.js inside the public folder
+cat <<EOF > public/config.js
 const CONFIG = {
     WEATHER_API_KEY: '${WEATHER_API_KEY}',
     CITY: '${CITY:-Vijayawada}',
@@ -20,4 +28,4 @@ const CONFIG = {
 };
 EOF
 
-echo "config.js has been generated successfully."
+echo "Build complete: public folder prepared with config.js"
